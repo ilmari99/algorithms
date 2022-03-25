@@ -45,7 +45,7 @@ def solution(s : str):
 
 if __name__ == "__main__":
     import sys
-    import hulabaloobalai
+    #This is main
     if len(sys.argv) == 1:# If no cmd line argument is provided
         ss = ["<<>><",">----<",">>>><<<<",">><<--->-",">>><<","-<-<-<-<->>-<<><<-->>--<"]
         for s in ss:
