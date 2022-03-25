@@ -47,7 +47,6 @@ if __name__ == "__main__":
     import sys
     if len(sys.argv) == 1:
         ss = ["<<>><",">----<",">>>><<<<",">><<--->-",">>><<","-<-<-<-<->>-<<><<-->>--<"]
-        correct = [4,2,32,8,30]
         for s in ss:
             ans = solution(s)
             print(s,ans)
