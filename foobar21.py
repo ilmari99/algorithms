@@ -45,7 +45,7 @@ def solution(s : str):
 
 if __name__ == "__main__":
     import sys
-    #This is main
+    #This is comm from corr_comm branch
     if len(sys.argv) == 1:# If no cmd line argument is provided
         ss = ["<<>><",">----<",">>>><<<<",">><<--->-",">>><<","-<-<-<-<->>-<<><<-->>--<"]
         for s in ss:
