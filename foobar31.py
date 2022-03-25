@@ -1,7 +1,5 @@
-cases = [(0,0),(1,1),(2,1),(2,1),(4,7),(5,4),(16,6),(1,6),(6,5),(11,5),(16,5),(21,5),
-         (26,5),(31,5),(31,36),(67,36),(46,5),(51,5),(56,5),(707,11),(10**50,5001)]
-correct = ["impossible",1,4,4,"impossible",5,5,6,7,8,9,10,11,12,13,14,15]
 import itertools as it
+import sys
 
 def back_step(tup,i):
     a = tup[0]
@@ -39,10 +37,19 @@ def solution(M,F):
         return "impossible"
     return str(i)
 
-for c in cases:
-    print("case:",c)
-    ans = solution(c[0],c[1])
-    print("answer:",ans)
+if __name__ == "__main__":
+    if len(sys.argv) == 1:
+        cases = [(0,0),(1,1),(2,1),(2,1),(4,7),(5,4),(16,6),(1,6),(6,5),(11,5),(16,5),(21,5),
+         (26,5),(31,5),(31,36),(67,36),(46,5),(51,5),(56,5),(707,11),(10**50,5001)]
+        for c in cases:
+            print("case:",c)
+            ans = solution(c[0],c[1])
+            print("answer:",ans)
+    else:
+        M = sys.argv[1]
+        F = sys.argv[2]
+        its = solution(M, F)
+        print(f"The smallest number of iterations to reach pair {M,F} from (1,1) is {its}")
 
 
             

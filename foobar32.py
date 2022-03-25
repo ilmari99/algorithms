@@ -1,5 +1,6 @@
 import numpy as np
 import math
+import sys
 ns = [3,4,5,7,8,10,11,12,13,60,200,1000]
 correct = [1,1,2,4,5,9,11,14,17,0,487067745,8635565795744155161505]
 counted = [3,4,5] #Holds the values for which the list of sums has been counted
@@ -51,6 +52,15 @@ def solution(n,threshold=1):
             return 0
     return a-b
 
-for n,cor in zip(ns,correct):
-    ans = solution(n)
-    print("case:",n, "ans:",ans,"correct:",cor)
+if __name__ == "__main__":
+    if len(sys.argv) == 1:
+        for n,cor in zip(ns,correct):
+            ns = [3,4,5,7,8,10,11,12,13,60,200,1000]
+            correct = [1,1,2,4,5,9,11,14,17,0,487067745,8635565795744155161505]
+            ans = solution(n)
+            print("case:",n, "ans:",ans,"correct:",cor)
+    else:
+        n = int(sys.argv[1])
+        s = solution(n)
+        print(f"There are {s} ways to create a sum that equals {n} where every part of the sum has atleast a difference of 1")
+            

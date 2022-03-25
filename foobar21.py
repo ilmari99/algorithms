@@ -1,5 +1,3 @@
-ss = ["<<>><",">----<",">>>><<<<",">><<--->-",">>><<","-<-<-<-<->>-<<><<-->>--<"]
-correct = [4,2,32,8,30]
 def solution(s : str):
     """Returns the number of 'salutes' (2 / people meeting) from a string where '<' and '>' denote persons moving down an isle and their directions
 
@@ -45,6 +43,16 @@ def solution(s : str):
             char = None
     return salutes
 
-for s in ss:
-    ans = solution(s)
-    print(s,ans)
+if __name__ == "__main__":
+    import sys
+    if len(sys.argv) == 1:
+        ss = ["<<>><",">----<",">>>><<<<",">><<--->-",">>><<","-<-<-<-<->>-<<><<-->>--<"]
+        correct = [4,2,32,8,30]
+        for s in ss:
+            ans = solution(s)
+            print(s,ans)
+    else:
+        aisle = sys.argv[1]
+        print(f"State of the aisle: {aisle}")
+        salutes = solution(aisle)
+        print(f"People currently in aisle perform {salutes} salutes, assuming everyone who meets in the aisle perform 1 salute.")
