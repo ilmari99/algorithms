@@ -1,3 +1,14 @@
+"""
+Returns the smallest amount of iterations required to reach the pair (M,F)
+starting from (1,1).
+Iterating from (1,1)  forwards: in every step there are two possible next iterations: (a1,a2) -> (a1+a2, a2) and (a1,a1+a2).
+If there is no amount of iterations that would yield the desired pair (M,N), returns the string 'impossible'.
+
+USAGE:
+`python3 foobar31.py <int> <int>`
+
+"""
+
 import itertools as it
 import sys
 

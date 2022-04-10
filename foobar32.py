@@ -7,7 +7,7 @@ counted = [3,4,5] #Holds the values for which the list of sums has been counted
 results = [[1],[1],[1,2]] #Has the number of different sums up to a threshold in descending order
 
 def solution(n,threshold=1):
-    '''
+    '''Returns the number of ways to create a sum from positive integers
     n (int) : number
     threshold (int) : discard sums that contain a number _less_ than this threshold
 
@@ -16,6 +16,7 @@ def solution(n,threshold=1):
     1) There must be atleast 2 positive integers
     2) All elements in the sum must have atleast a difference of 1
     3) All elements must be >= threshold
+    4) The sum of the integers must be equal to n 
     '''
     if n<3 or threshold >= n:
         return 0
