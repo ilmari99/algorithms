@@ -52,7 +52,7 @@ def create_tree(start=1,max_level=10):
     Args:
         start (int, optional): From which number to start. Defaults to 1.
         max_level (int, optional):  Max depth. More than 40 levels are discouraged,
-                                    because the amount of numbers grows.
+                                    because the amount of numbers in a level often grows exponentially.
                                     Defaults to 10.
 
     Returns:
@@ -68,8 +68,10 @@ def create_tree(start=1,max_level=10):
         val = node.number
         vals = prev_step(val)
         children = [ColN(v) for v in vals]  # Create new nodes, children of the current node and set their values
-        [c.set_parent(node) for c in children]
-        [c.set_iters(node.iters + 1) for c in children]
+        # Set the parent and iters for children of node
+        for c in children:
+            c.set_parent(node)
+            c.set_iters(node.iters + 1)
         node.set_children(children)         # Set the children of the current node
         level_width += 1
         if level != node.iters:             # Create a new level
@@ -86,8 +88,9 @@ def print_smallest(head):
     """
     i = 0
     nodes = [head]
+    start = head.number
     while None not in nodes:
-        print(f"Smallest number with iterations {i} is {min([n.number for n in nodes])}")
+        print(f"Smallest number with {i} iterations from {start} is {min([n.number for n in nodes])}")
         nodes = [n.children for n in nodes]
         nodes = list(it.chain(*nodes))
         i = i + 1
@@ -171,18 +174,21 @@ def flatten(head):
         nodes = nodes + new_nodes
     return nodes
 
-def plot_level_widths(head):
+def plot_level_widths(head, show = True):
     """Plots the amount of numbers (y) versus the corresponding iterations
     """
     widths = get_widths(head)
     plt.figure()
+    plt.title("Amount of numbers with the same amount of iterations")
     xs = list(range(0,len(widths)))
     plt.scatter(list(range(0,len(widths))),widths)
     plt.xlabel(f"Iterations from {head.number}")
     plt.ylabel("Numbers in a level")
-    plt.show()
+    if show:
+        plt.show()
+    return
     
-def plot_numbers_reached(head,start=0,end=-1):
+def plot_numbers_reached(head,start=0,end=-1,show=True):
     """Plots all numbers (y) reached with (x) iterations from start.
     """
     levels = get_levels(head)[start:end+1]
@@ -190,11 +196,14 @@ def plot_numbers_reached(head,start=0,end=-1):
     min_iters = levels[0][0].iters
     x = range(min_iters,max_iters)
     plt.figure()
+    plt.title("Values of numbers with the amount of iterations.")
     for xs,ys in zip(x,levels):
         plt.scatter([xs]*len(ys), [y.number for y in ys])
     plt.xlabel(f"Iterations from {head.number}")
     plt.ylabel("Numbers reached")
-    plt.show()
+    if show:
+        plt.show()
+    return
     
 
 if __name__ == "__main__":
@@ -204,11 +213,9 @@ if __name__ == "__main__":
     xs = list(range(0,len(widths)))
     coefs = optimize.curve_fit(lambda x,a,b: a*2**(b*x), xs,widths)[0]
     fun = lambda x : coefs[0]*2**(coefs[1]*x)
-    print(f"Best fit function {coefs[0]}*2^({coefs[1]}*x)")
-    flat_nodes = flatten(head)
-    #plt.scatter(range(0,len(flat_nodes)),[n.number for n in flat_nodes])
-    plot_numbers_reached(head,start=30,end=40)
-    plot_level_widths(head)
+    print(f"Best fit function for approximating the amount of numbers found with the same number of iterations {coefs[0]}*2^({coefs[1]}*x)")
+    plot_numbers_reached(head,start=30,end=40,show=False)
+    plot_level_widths(head,show=False)
     plt.show()
 
     
