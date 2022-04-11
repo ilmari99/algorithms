@@ -1,4 +1,4 @@
-import numpy as np
+
 import math
 import sys
 ns = [3,4,5,7,8,10,11,12,13,60,200,1000]

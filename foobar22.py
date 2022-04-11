@@ -4,8 +4,6 @@ USAGE:
 `python3 foobar22.py <n1> <n2> <n3> .... <nk>`
 
 """
-
-import numpy as np
 import itertools as it
 import sys
 def solution(L: list):
