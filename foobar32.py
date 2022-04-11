@@ -63,5 +63,5 @@ if __name__ == "__main__":
     else:
         n = int(sys.argv[1])
         s = solution(n)
-        print(f"There are {s} ways to create a sum that equals {n} where every part of the sum has atleast a difference of 1")
+        print("There are",s," ways to create a sum that equals",n,"where every part of the sum has atleast a difference of 1")
             

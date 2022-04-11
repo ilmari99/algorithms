@@ -5,7 +5,7 @@ For a custom string:
 For a demonstration, do not give a string argument
 '''
 
-def solution(s : str):
+def solution(s):
     """Returns the number of 'salutes' (2 / people meeting) from a string where '<' and '>' denote persons moving down an isle and their directions
 
     Args:
@@ -63,6 +63,6 @@ if __name__ == "__main__":
             print(s,ans)
     else:
         aisle = sys.argv[1]
-        print(f"State of the aisle: {aisle}")
+        print("State of the aisle:",aisle)
         salutes = solution(aisle)
-        print(f"People currently in aisle perform {salutes} salutes, assuming everyone who meets in the aisle perform 1 salute.")
+        print("People currently in aisle perform",salutes, "salutes, assuming everyone who meets in the aisle perform 1 salute.")
