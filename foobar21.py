@@ -25,6 +25,6 @@ if __name__ == "__main__":
             print(s,ans)
     else:
         aisle = sys.argv[1]
-        print(f"State of the aisle: {aisle}")
+        print("State of the aisle:",aisle)
         salutes = solution(aisle)
-        print(f"People currently in aisle perform {salutes} salutes, assuming everyone who meets in the aisle perform 1 salute.")
+        print("People currently in aisle perform",salutes, "salutes, assuming everyone who meets in the aisle perform 1 salute.")

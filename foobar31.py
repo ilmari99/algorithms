@@ -60,7 +60,7 @@ if __name__ == "__main__":
         M = sys.argv[1]
         F = sys.argv[2]
         its = solution(M, F)
-        print(f"The smallest number of iterations to reach pair {M,F} from (1,1) is {its}")
+        print("The smallest number of iterations to reach pair",(M,F)," from (1,1) is", its)
 
 
             

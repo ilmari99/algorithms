@@ -4,11 +4,9 @@ USAGE:
 `python3 foobar22.py <n1> <n2> <n3> .... <nk>`
 
 """
-
-import numpy as np
 import itertools as it
 import sys
-def solution(L: list):
+def solution(L):
     """
     Returns the largest integer divisible by 3 that can be arranged from the input list L containing single digits.
 
@@ -37,5 +35,5 @@ if __name__ == "__main__":
         sys.argv.pop(0)
         L = [int(_) for _ in sys.argv]
     n = solution(L)
-    print(f"The largest number that is divisible by three with digits {L} is {n}")
+    print("The largest number that is divisible by three with digits",L," is",n)
 
