@@ -11,7 +11,6 @@ For example, if you and the elite trainer were positioned in a room with dimensi
 """
 import random
 import math
-from termios import VEOF
 cases = [([3,2],[1,1],[2,1],4,7), ([300,275],[150,150],[185,100],500,9)]
 
 def generate_case(**kwargs):
@@ -35,8 +34,6 @@ def generate_case(**kwargs):
     assert 0 < trainer_position[1] < dimensions[1]
     return (dimensions, your_position, trainer_position, distance)
 
-
-    
 def vector_length(vector):
     return math.sqrt(vector[0]**2 + vector[1]**2)
 
@@ -72,40 +69,50 @@ def check_new_direction(direction,new_direction):
     except AssertionError:
         msg = "Invalid direction (incorrect signs): New direction: {}, Old direction".format(new_direction,direction)
     try:
-        assert math.isclose(direction[0]/direction[1],new_direction[0]/new_direction[1])
+        new_ratio = new_direction[1]/new_direction[0]
+        ratio = direction[1]/direction[0]
+        assert math.isclose(ratio,new_ratio)
     except AssertionError:
-        msg = "Invalid direction (incorrect ratio): New direction: {}, Old direction {}".format(new_direction,direction)
+        msg = "Invalid direction (incorrect ratio): New direction: {}, Old direction {}".format(new_ratio,ratio)
     if msg:
         raise AssertionError(msg)
 
-def make_unidir_vector(direction, laser_pos, bounds):
+def create_step_to_direction(direction, laser_pos, bounds):
     """ Converts a direction vector to a step vector, that is the longest 'safe' step in the given direction
     """
-    ### TODO: Currently can skip an integer position
     
     # Step towards the closest integer in the x direction
     max_steps = max_step_lens(direction,laser_pos)
     xdist = max_steps[0]
     ydist = max_steps[1]
-    print("xdist: {}, ydist: {}".format(xdist, ydist))
     # Choose the smaller of x and y, and calculate the larger by using the smaller using proportionality.
     # 
+    # Slope of the line is y/x
+    try:
+        k = direction[1]/direction[0]
+    # If the slope is infinite, then the line is vertical
+    except ZeroDivisionError:
+        return [0,ydist]
+    # If the slope is 0, then the line is horizontal
+    if k == 0:
+        return [xdist,0]
+    print("xdist: {}, ydist: {}, k: {}".format(xdist,ydist,k))
+    # If ydist is smaller, then we calculate how much does x change, when y changes by ydist
     if abs(ydist) < abs(xdist):
         print("ydist is smaller")
-        print(direction[0], direction[1])
-        vec2 = [(direction[0]/direction[1])*ydist,ydist]
+        vec2 = [ydist/k,ydist]
+    elif abs(ydist) > abs(xdist):
+        print("xdist is smaller")
+        vec2 = [xdist,xdist*k]
     else:
-        vec2 = [xdist,((direction[1]*xdist)/direction[0])*xdist]
-    # TODO: Sign changes to incorrect, need to fix more elegantly
+        m = max([abs(_) for _ in direction])
+        vec2 = [direction[0]/m,direction[1]/m]
     check_new_direction(direction,vec2)
     if (direction[0] < 0 and vec2[0]>0) or (direction[0] > 0 and vec2[0]<0):
         vec2[0] = -1*vec2[0]
     if (direction[1] < 0 and vec2[1]>0) or (direction[1] > 0 and vec2[1]<0):
         vec2[1] = -1*vec2[1]
     print("vec2 {}".format(vec2))
-    # Return the smaller of the two vectors
-    #if vector_length(vec) < vector_length(vec2):
-        #return vec
     return vec2
     
     
@@ -152,8 +159,9 @@ def fire_to_direction(direction,dimensions,your_position,trainer_position,distan
     print("**********")
     laser_pos = your_position
     travelled_distance = 0
-    direction = make_unidir_vector(direction,laser_pos,dimensions)
+    direction = create_step_to_direction(direction,laser_pos,dimensions)
     while True:
+        direction = create_step_to_direction(direction,laser_pos,dimensions)
         laser_pos = [laser_pos[0] + direction[0], laser_pos[1] + direction[1]]
         travelled_distance += vector_length(direction)
         print("Laser position at main:",laser_pos)
@@ -165,11 +173,11 @@ def fire_to_direction(direction,dimensions,your_position,trainer_position,distan
         hits_wall = hits_walls(laser_pos,dimensions)
         if any(hits_wall):
             direction = cal_new_direction(hits_wall,direction)
-        direction = make_unidir_vector(direction,laser_pos,dimensions)
+        #direction = create_step_to_direction(direction,laser_pos,dimensions)
 
 if __name__ == "__main__":
-    print("vector:",make_unidir_vector([-(1/2),-(1/6)],[3,11/6],[3,2]))
+    #print("vecotor",create_step_to_direction([3,2],[0,5/3],[3,2]))
+    #print("vector:",create_step_to_direction([-(1/2),-(1/6)],[3,11/6],[3,2]))
     #exit()
-    print("vecotor",make_unidir_vector([3,2],[0,5/3],[3,2]))
-    print(cal_new_direction([False,True,False,False],[-3,2]))
-    print(fire_to_direction([3,2],*cases[0][:-1]))
+    #print(cal_new_direction([False,True,False,False],[-3,2]))
+    print(fire_to_direction([1,2],*cases[0][:-1]))
