@@ -96,23 +96,19 @@ def create_step_to_direction(direction, laser_pos, bounds):
     # If the slope is 0, then the line is horizontal
     if k == 0:
         return [xdist,0]
-    print("xdist: {}, ydist: {}, k: {}".format(xdist,ydist,k))
     # If ydist is smaller, then we calculate how much does x change, when y changes by ydist
     if abs(ydist) < abs(xdist):
-        print("ydist is smaller")
         vec2 = [ydist/k,ydist]
     elif abs(ydist) > abs(xdist):
-        print("xdist is smaller")
         vec2 = [xdist,xdist*k]
     else:
         m = max([abs(_) for _ in direction])
         vec2 = [direction[0]/m,direction[1]/m]
-    check_new_direction(direction,vec2)
-    if (direction[0] < 0 and vec2[0]>0) or (direction[0] > 0 and vec2[0]<0):
-        vec2[0] = -1*vec2[0]
-    if (direction[1] < 0 and vec2[1]>0) or (direction[1] > 0 and vec2[1]<0):
-        vec2[1] = -1*vec2[1]
-    print("vec2 {}".format(vec2))
+    #check_new_direction(direction,vec2)
+    #if (direction[0] < 0 and vec2[0]>0) or (direction[0] > 0 and vec2[0]<0):
+    #    vec2[0] = -1*vec2[0]
+    #if (direction[1] < 0 and vec2[1]>0) or (direction[1] > 0 and vec2[1]<0):
+    #    vec2[1] = -1*vec2[1]
     return vec2
     
     
@@ -147,38 +143,68 @@ def cal_new_direction(wall_hits,direction):
                 new_direction[1] = -new_direction[1]
             else:
                 new_direction[0] = -new_direction[0]
-    print("Calculated direction: {}".format(new_direction))
     return new_direction
 
 def fire_to_direction(direction,dimensions,your_position,trainer_position,distance):
-    print("INPUTS:")
-    print("direction:",direction)
-    print("dimensions:",dimensions)
-    print("your_position:",your_position)
-    print("trainer_position:",trainer_position)
-    print("distance:",distance)
-    print("**********")
+    #print("INPUTS:")
+    #print("direction:",direction)
+    #print("dimensions:",dimensions)
+    #print("your/laser_position:",your_position)
+    #print("trainer_position:",trainer_position)
+    #print("distance:",distance)
+    #print("**********")
     laser_pos = your_position
     travelled_distance = 0
-    direction = create_step_to_direction(direction,laser_pos,dimensions)
+    #direction = create_step_to_direction(direction,laser_pos,dimensions)
     while True:
         direction = create_step_to_direction(direction,laser_pos,dimensions)
         laser_pos = [laser_pos[0] + direction[0], laser_pos[1] + direction[1]]
         travelled_distance += vector_length(direction)
-        print("Laser position at main:",laser_pos)
-        print("laser direction at main:",direction)
+        #print("Direction step:",direction)
+        #print("Laser position at main:",laser_pos)
         if all([math.isclose(lp,yp) for lp, yp in zip(laser_pos,your_position)]) or travelled_distance > distance:
             return False
         if all([math.isclose(lp,tp) for lp, tp in zip(laser_pos,trainer_position)]):
+            #print("HITS TRAINER\n")
             return True
         hits_wall = hits_walls(laser_pos,dimensions)
         if any(hits_wall):
             direction = cal_new_direction(hits_wall,direction)
         #direction = create_step_to_direction(direction,laser_pos,dimensions)
+        
+def generate_initial_directions(distance):
+    """Generate distinct shooting directions that are integer pairs (vectors), whose length < distance"""
+    i = 4
+    yield [0,1]
+    yield [0,-1]
+    yield [1,0]
+    yield [-1,0]
+    for x_direction in range(1,distance+1):
+        ymax = int(math.sqrt(distance**2 - x_direction**2))
+        for y_direction in range(1,ymax+1):
+            #if vector_length([x_direction,y_direction]) > distance:
+            #    continue
+            if math.gcd(x_direction,y_direction) == 1:
+                i += 4
+                yield [x_direction,y_direction]
+                yield [x_direction,-y_direction]
+                yield [-x_direction,-y_direction]
+                yield [-x_direction,y_direction]
 
 if __name__ == "__main__":
     #print("vecotor",create_step_to_direction([3,2],[0,5/3],[3,2]))
     #print("vector:",create_step_to_direction([-(1/2),-(1/6)],[3,11/6],[3,2]))
     #exit()
     #print(cal_new_direction([False,True,False,False],[-3,2]))
-    print(fire_to_direction([1,2],*cases[0][:-1]))
+    hits = []
+    try:
+        with open("hits.txt","w") as f:
+            for d in generate_initial_directions(500):
+                if fire_to_direction(d,*cases[1][:-1]):
+                    hits.append(d)
+                f.write(str(d)+"\n")
+    except KeyboardInterrupt:
+        pass
+    print("count:",len(hits))
+    print(hits)
+    #print(fire_to_direction([1,2],*cases[0][:-1]))
