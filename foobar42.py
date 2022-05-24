@@ -130,7 +130,8 @@ def hits_walls(laser_position,dimensions):
     return walls
 
 def cal_new_direction(wall_hits,direction):
-    """Calculates the new direction based on the wall hits
+    """Calculates the new direction based on the wall hits.
+    If the beam hits the bounds of the corresponding coordinate, then the direction is reversed in the corresponding direction element.
     """
     new_direction = direction.copy()
     for i,w in enumerate(wall_hits):
@@ -166,6 +167,8 @@ def fire_to_direction(direction,dimensions,your_position,trainer_position,distan
         if any(hits_wall):
             direction = cal_new_direction(hits_wall,direction)
         direction = make_unidir_vector(direction,laser_pos,dimensions)
+        
+    
 
 if __name__ == "__main__":
     print("vector:",make_unidir_vector([-(1/2),-(1/6)],[3,11/6],[3,2]))
