@@ -11,6 +11,7 @@ For example, if you and the elite trainer were positioned in a room with dimensi
 """
 import random
 import math
+import matplotlib.pyplot as plt
 cases = [([3,2],[1,1],[2,1],4,7), ([300,275],[150,150],[185,100],500,9)]
 
 def generate_case(**kwargs):
@@ -45,11 +46,13 @@ def max_step_lens(direction,laser_pos):
     # Calculate the distance to the closest integer in the x and y directions
     xdist = math.floor(laser_pos[0]) - laser_pos[0] if direction[0]<0 else math.ceil(laser_pos[0]) - laser_pos[0]
     ydist = math.floor(laser_pos[1]) - laser_pos[1] if direction[1]<0 else math.ceil(laser_pos[1]) - laser_pos[1]
-    
+    a = round_if_close([xdist,ydist])
+    #xdist = a[0]
+    #ydist = a[1]
     # If the position is at an integer coordinate, then we can step 1 in the direction of the direction
-    if math.isclose(xdist, 0):
+    if xdist == 0:
         xdist = -1 if direction[0]<0 else 1
-    if math.isclose(ydist, 0):
+    if ydist == 0:
         ydist = -1 if direction[1]<0 else 1
     return [xdist,ydist]
 
@@ -76,40 +79,34 @@ def check_new_direction(direction,new_direction):
         msg = "Invalid direction (incorrect ratio): New direction: {}, Old direction {}".format(new_ratio,ratio)
     if msg:
         raise AssertionError(msg)
+    
+def round_if_close(L):
+    """Rounds a list of floats to the nearest integer if they are 'close' to an integer
+    """
+    return [round(x) if math.isclose(x,round(x),abs_tol=10**(-12)) else x for x in L]
 
 def create_step_to_direction(direction, laser_pos, bounds):
     """ Converts a direction vector to a step vector, that is the longest 'safe' step in the given direction
     """
-    
-    # Step towards the closest integer in the x direction
+    # Steps towards the closest integer
     max_steps = max_step_lens(direction,laser_pos)
     xdist = max_steps[0]
     ydist = max_steps[1]
-    # Choose the smaller of x and y, and calculate the larger by using the smaller using proportionality.
-    # 
-    # Slope of the line is y/x
-    try:
-        k = direction[1]/direction[0]
-    # If the slope is infinite, then the line is vertical
-    except ZeroDivisionError:
-        return [0,ydist]
     # If the slope is 0, then the line is horizontal
-    if k == 0:
-        return [xdist,0]
-    # If ydist is smaller, then we calculate how much does x change, when y changes by ydist
-    if abs(ydist) < abs(xdist):
-        vec2 = [ydist/k,ydist]
-    elif abs(ydist) > abs(xdist):
-        vec2 = [xdist,xdist*k]
-    else:
-        m = max([abs(_) for _ in direction])
-        vec2 = [direction[0]/m,direction[1]/m]
-    #check_new_direction(direction,vec2)
-    #if (direction[0] < 0 and vec2[0]>0) or (direction[0] > 0 and vec2[0]<0):
-    #    vec2[0] = -1*vec2[0]
-    #if (direction[1] < 0 and vec2[1]>0) or (direction[1] > 0 and vec2[1]<0):
-    #    vec2[1] = -1*vec2[1]
-    return vec2
+    if math.isclose(direction[0],0):
+        return [0,ydist] #Else would raise exception on division by zero
+    k = direction[1]/direction[0]
+    if math.isclose(k,0):
+        return [xdist,0] ######
+    xchange = ydist/k
+    ychange = xdist*k
+    if abs(xchange) > abs(xdist):
+        vec = [xdist,ychange]
+    elif abs(xchange) < abs(xdist):
+        vec = [xchange,ydist]
+    else:#math.isclose(abs(xchange),abs(ychange))
+        vec = [xdist,ydist]
+    return vec
     
     
 def hits_walls(laser_position,dimensions):
@@ -122,9 +119,9 @@ def hits_walls(laser_position,dimensions):
     bounds = [xbounds,ybounds]
     bounds = [0,0,dimensions[0],dimensions[1]]
     walls = [False]*len(bounds)       # 0 = bottom, 1 = left, 2 = top, 3 = right
-    if laser_position[0] == bounds[0]:
+    if laser_position[0]==bounds[0]:
         walls[1] = True
-    if laser_position[0] == bounds[2]:
+    if laser_position[0]==bounds[2]:
         walls[3] = True
     if laser_position[1] == bounds[1]:
         walls[0] = True
@@ -139,13 +136,14 @@ def cal_new_direction(wall_hits,direction):
     new_direction = direction.copy()
     for i,w in enumerate(wall_hits):
         if w:
+            # If hits the bottom or top walls, the y direction is reversed
             if i in [0,2]:
                 new_direction[1] = -new_direction[1]
             else:
                 new_direction[0] = -new_direction[0]
     return new_direction
 
-def fire_to_direction(direction,dimensions,your_position,trainer_position,distance):
+def fire_to_direction(direction,dimensions,your_position,trainer_position,distance,ret_path=False):
     #print("INPUTS:")
     #print("direction:",direction)
     #print("dimensions:",dimensions)
@@ -156,21 +154,36 @@ def fire_to_direction(direction,dimensions,your_position,trainer_position,distan
     laser_pos = your_position
     travelled_distance = 0
     #direction = create_step_to_direction(direction,laser_pos,dimensions)
+    path = {0:laser_pos}
+    stepno = 1
+    out = None
     while True:
         direction = create_step_to_direction(direction,laser_pos,dimensions)
         laser_pos = [laser_pos[0] + direction[0], laser_pos[1] + direction[1]]
+        laser_pos = round_if_close(laser_pos)
         travelled_distance += vector_length(direction)
+        if any([True if lp < 0 or lp > d else False for lp,d in zip(laser_pos,dimensions)]):
+            create_plot(dimensions,your_position,trainer_position,path)
+            raise Exception("Laser position is outside the bounds of the arena")
         #print("Direction step:",direction)
         #print("Laser position at main:",laser_pos)
-        if all([math.isclose(lp,yp) for lp, yp in zip(laser_pos,your_position)]) or travelled_distance > distance:
-            return False
-        if all([math.isclose(lp,tp) for lp, tp in zip(laser_pos,trainer_position)]):
+        if ret_path:
+            path[stepno] = laser_pos#[sum(p) for p in zip(path.get(stepno,[0,0]),laser_pos)]
+        if all([lp==yp for lp, yp in zip(laser_pos,your_position)]) or travelled_distance > distance:
+            out = False
+            break
+        if all([lp==tp for lp, tp in zip(laser_pos,trainer_position)]):
             #print("HITS TRAINER\n")
-            return True
+            out = True
+            break
         hits_wall = hits_walls(laser_pos,dimensions)
         if any(hits_wall):
             direction = cal_new_direction(hits_wall,direction)
-        #direction = create_step_to_direction(direction,laser_pos,dimensions)
+        stepno += 1
+    if ret_path:
+        return out,path
+    return out
+        
         
 def generate_initial_directions(distance):
     """Generate distinct shooting directions that are integer pairs (vectors), whose length < distance"""
@@ -191,20 +204,49 @@ def generate_initial_directions(distance):
                 yield [-x_direction,-y_direction]
                 yield [-x_direction,y_direction]
 
+def create_plot(dimensions,your_position,trainer_position,path,show=True,new_fig=True):
+    """Creates a plot of the path of the laser
+    """
+    x = [_[0] for _ in path.values()]
+    y = [_[1] for _ in path.values()]
+    if new_fig:
+        plt.figure()
+    plt.plot(x,y,label="path")
+    free_space_on_edges = 0.4
+    plt.xlim(-free_space_on_edges*dimensions[0],dimensions[0]+free_space_on_edges*dimensions[0])
+    plt.ylim(-free_space_on_edges*dimensions[1],dimensions[1]+free_space_on_edges*dimensions[1])
+    x = [0,0,dimensions[0],dimensions[0],0]
+    y = [0,dimensions[1],dimensions[1],0,0]
+    plt.plot(x,y,label="bounds")
+    plt.plot(your_position[0],your_position[1],'ro',label="Your position")
+    plt.plot(trainer_position[0],trainer_position[1],'bo',label="enemy position"),
+    plt.grid()
+    if new_fig:
+        plt.legend(loc="upper left")
+    if show:
+        plt.show()
+
 if __name__ == "__main__":
     #print("vecotor",create_step_to_direction([3,2],[0,5/3],[3,2]))
     #print("vector:",create_step_to_direction([-(1/2),-(1/6)],[3,11/6],[3,2]))
     #exit()
     #print(cal_new_direction([False,True,False,False],[-3,2]))
-    hits = []
-    try:
-        with open("hits.txt","w") as f:
-            for d in generate_initial_directions(500):
-                if fire_to_direction(d,*cases[1][:-1]):
-                    hits.append(d)
-                f.write(str(d)+"\n")
-    except KeyboardInterrupt:
-        pass
-    print("count:",len(hits))
-    print(hits)
+    hits = {}
+    dims = [4,4]#cases[1][0]
+    your_position = [1,1]#cases[1][1]
+    trainer_position = [3,2]#cases[1][2]
+    distance = 8#cases[1][3]
+    plt.figure()
+    for i,d in enumerate(generate_initial_directions(distance)):
+        h,path = fire_to_direction(d,dims,your_position,trainer_position,distance,ret_path = True)
+        if h:
+            create_plot(dims,your_position,trainer_position,path,show=False,new_fig=False)
+            if d[0] in hits:
+                hits[d[0]].append(d[1])
+            else:
+                hits[d[0]] = [d[1]]
+    print("count:",sum([len(hits[k]) for k in hits]))
+    for k in hits.items():
+        print(k)
+    plt.show()
     #print(fire_to_direction([1,2],*cases[0][:-1]))
