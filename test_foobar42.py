@@ -1,4 +1,5 @@
 import unittest
+import math
 from foobar42 import *
 class test_foobar42(unittest.TestCase):
     def test_vector_length1(self):
@@ -7,6 +8,7 @@ class test_foobar42(unittest.TestCase):
     def test_vector_length2(self):
         vec = [1,0]
         self.assertAlmostEqual(vector_length(vec), 1)
+        
     def test_max_step_lens1(self):
         laser_pos = [1,1]
         direction = [1,1]
@@ -16,6 +18,13 @@ class test_foobar42(unittest.TestCase):
         laser_pos = [0,1.5]
         direction = [0.1,0.1]
         self.assertEqual(max_step_lens(direction,laser_pos),[1,0.5])
+        
+    def test_max_step_lens3(self):
+        laser_pos = [5/3,2]
+        direction = [1,-3]
+        pred = max_step_lens(direction,laser_pos)
+        ans = [1/3,-1]
+        self.assertTrue(all([math.isclose(p,a) for p,a in zip(pred,ans)]))
         
     def test_check_new_direction_raises_on_signs(self):
         direction = [1,1]
@@ -83,6 +92,13 @@ class test_foobar42(unittest.TestCase):
         ans = hits_walls(laser_pos,bounds)
         corr_ans = [False, False, True, False]
         self.assertListEqual(ans, corr_ans)
+    
+    def test_hits_walls4(self):
+        laser_pos = [3,0]
+        bounds = [3,2]
+        ans = hits_walls(laser_pos,bounds)
+        corr_ans = [True,False,False,True]
+        self.assertListEqual(ans, corr_ans)
         
     def test_cal_new_direction1(self):
         wall_hits = [False, False, True, False]
@@ -103,6 +119,13 @@ class test_foobar42(unittest.TestCase):
         direction = [-1,-1]
         ans = cal_new_direction(wall_hits, direction)
         corr_ans = [1,1]
+        self.assertListEqual(ans, corr_ans)
+    
+    def test_cal_new_direction4(self):
+        wall_hits = [True,False,False,True]
+        direction = [1/3,-1]
+        ans = cal_new_direction(wall_hits, direction)
+        corr_ans = [-1/3,1]
         self.assertListEqual(ans, corr_ans)
         
     def test_fire_to_direction1(self):
