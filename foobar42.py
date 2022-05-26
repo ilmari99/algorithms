@@ -133,15 +133,15 @@ def cal_new_direction(wall_hits,direction):
     """Calculates the new direction based on the wall hits.
     If the beam hits the bounds of the corresponding coordinate, then the direction is reversed in the corresponding direction element.
     """
-    new_direction = direction.copy()
+    #new_direction = direction.copy()
     for i,w in enumerate(wall_hits):
         if w:
             # If hits the bottom or top walls, the y direction is reversed
             if i in [0,2]:
-                new_direction[1] = -new_direction[1]
+                direction[1] = -direction[1]
             else:
-                new_direction[0] = -new_direction[0]
-    return new_direction
+                direction[0] = -direction[0]
+    return direction
 
 def fire_to_direction(direction,dimensions,your_position,trainer_position,distance,ret_path=False):
     #print("INPUTS:")
@@ -163,12 +163,9 @@ def fire_to_direction(direction,dimensions,your_position,trainer_position,distan
         laser_pos = round_if_close(laser_pos)
         travelled_distance += vector_length(direction)
         if any([True if lp < 0 or lp > d else False for lp,d in zip(laser_pos,dimensions)]):
-            create_plot(dimensions,your_position,trainer_position,path)
             raise Exception("Laser position is outside the bounds of the arena")
-        #print("Direction step:",direction)
-        #print("Laser position at main:",laser_pos)
         if ret_path:
-            path[stepno] = laser_pos#[sum(p) for p in zip(path.get(stepno,[0,0]),laser_pos)]
+            path[stepno] = laser_pos
         if all([lp==yp for lp, yp in zip(laser_pos,your_position)]) or travelled_distance > distance:
             out = False
             break
