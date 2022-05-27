@@ -40,6 +40,26 @@ def generate_initial_directions(distance):
                 yield [x_direction,-y_direction]
                 yield [-x_direction,-y_direction]
                 yield [-x_direction,y_direction]
+                
+def to_minimal_path(path):
+    steps = list(path.values())
+    min_path = {0:steps[0]}
+    def calc_k(s0,s1):
+        k = (s1[1] - s0[1])/(s1[0] - s0[0])
+        return k
+    k = calc_k(steps[0],steps[1])
+    prev_step = steps[0]
+    for i,step in enumerate(steps):
+        if i == 0:
+            continue
+        k_now = calc_k(prev_step,step)
+        if not math.isclose(k, k_now):
+            k = k_now
+            min_path[len(min_path)] = prev_step
+        prev_step = step
+    min_path[len(min_path)] = prev_step
+    return min_path
+        
 
 class Room:
     my_pos = []
@@ -274,21 +294,34 @@ class Shot:
             
             
 if __name__ == "__main__":
-    room = Room(bounds = [10,10],my_pos = [2,3],enemy_pos=[5,5],distance=200)
+    case2 = {"bounds":[300,275],
+             "my_pos":[150,150],
+             "enemy_pos":[185,100],
+             "distance":500
+             }
+    room = Room(bounds = [10,10],my_pos = [5,8],enemy_pos=[3,3],distance=50)
     shot = Shot(room,create_path=True)
     shot.ax = room.draw_room()
     bounce_hits = {}
-    for d in generate_initial_directions(room.distance):
+    hit_count = 0
+    for i,d in enumerate(generate_initial_directions(room.distance)):
         shot.shoot(d)
         if shot.hits:
-            if shot.bounces in bounce_hits:
-                bounce_hits[shot.bounces] += 1
-            else:
-                bounce_hits[shot.bounces] = 1
-            #shot.plot_path(ax=room.ax,show=False,new_fig=True)
-    bounce_hits = sorted(bounce_hits.items(),key=lambda x:x[0])
-    print("Solutions: {}".format(sum([_[1] for _ in bounce_hits])))
-    plt.figure()
-    plt.plot([_[0] for _ in bounce_hits],[_[1] for _ in bounce_hits])
-    print(bounce_hits)
-    plt.show()
+            hit_count += 1
+            #f shot.bounces in bounce_hits:
+            #    bounce_hits[shot.bounces] += 1
+            #else:
+            #    bounce_hits[shot.bounces] = 1
+            shot.plot_path(ax=room.ax,show=False,new_fig=True)
+            print(shot.path)
+            shot.path = to_minimal_path(shot.path)
+            shot.plot_path(ax=room.ax,show=False,new_fig=True)
+            print(shot.path)
+            plt.show()
+    #bounce_hits = sorted(bounce_hits.items(),key=lambda x:x[0])
+    print("{} directions tested".format(i))
+    print("Solutions: {}".format(hit_count))
+    #plt.figure()
+    #plt.plot([_[0] for _ in bounce_hits],[_[1] for _ in bounce_hits])
+    #print(bounce_hits)
+    #plt.show()
