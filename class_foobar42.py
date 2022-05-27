@@ -103,12 +103,14 @@ class Shot:
     start_pos = []          # The starting position of the laser: my_pos of room
     create_path = False     # If the path of the shot should be created
     room = None             # The room object, where the shot happens
-    distance = None         # How long does the laser remain deadly
+    max_distance = None         # How long does the laser remain deadly
     bounds = None           # Bounds of the room (0 excluded)
     hits = None             # Whether the laser hits the target
     path = {}               # The path of the laser (if created)
     start_direction = []
     ax = None
+    bounces = None
+    travelled_distance = None
     
     wall_hits = []          # A logical array telling which walls the laser is currently hitting
     pos = []                # The current position of the laser
@@ -117,7 +119,7 @@ class Shot:
     def set_room(self,room):
         self.room = room
         self.start_pos = room.my_pos
-        self.distance = room.distance
+        self.max_distance = room.distance
         self.bounds = room.bounds
     
     def __init__(self,room,create_path=False):
@@ -219,21 +221,22 @@ class Shot:
                     direction[0] = -direction[0]
         return direction
     
-    def shoot(self,direction):
+    def shoot(self,direction, allowed_bounces=float("inf")):
         pos = self.start_pos
         self.start_direction = direction.copy()
-        travelled_distance = 0
+        self.travelled_distance = 0
+        self.bounces = 0
         self.path = {0:pos}
         stepno = 1
         while True:
             direction = self.create_step_to_direction(pos,direction)
             pos = round_if_close([pos[0]+direction[0],pos[1]+direction[1]])
-            travelled_distance += vector_length(direction)
-            if any([True if lp < 0 or lp > d else False for lp,d in zip(pos,self.bounds)]):
-                raise Exception("Laser position is outside the bounds of the arena")
+            self.travelled_distance += vector_length(direction)
+            #if any([True if lp < 0 or lp > d else False for lp,d in zip(pos,self.bounds)]):
+            #    raise Exception("Laser position is outside the bounds of the arena")
             if self.create_path:
                 self.path[stepno] = pos
-            if all([lp==yp for lp, yp in zip(pos,self.start_pos)]) or travelled_distance > self.distance:
+            if all([lp==yp for lp, yp in zip(pos,self.start_pos)]) or self.travelled_distance > self.max_distance:
                 self.hits = False
                 break
             if all([lp==tp for lp, tp in zip(pos,self.room.enemy_pos)]):
@@ -242,6 +245,10 @@ class Shot:
                 break
             wall_hits = self.hits_walls(pos)
             if any(wall_hits):
+                self.bounces += 1
+                if self.bounces > allowed_bounces:
+                    self.hits = False
+                    break
                 direction = self.cal_new_direction(wall_hits,direction)
             stepno += 1
         return self.hits
@@ -249,6 +256,9 @@ class Shot:
     def plot_path(self,ax=None,show=True,new_fig=True):
         """Creates a plot of the path of the laser
         """
+        if not self.create_path:
+            print("Laser path is not created")
+            return
         if self.ax is None:
             assert new_fig or ax
         self.fig = ax
@@ -260,18 +270,25 @@ class Shot:
         if new_fig:
             plt.legend(loc="upper left")
         if show:
-            plt.show()
-
-room = Room(bounds = [3,2],my_pos = [1,1],enemy_pos=[2,1],distance=4)
-shot = Shot(room,create_path=True)
-
-
+            plt.show()           
+            
+            
 if __name__ == "__main__":
-    room = Room(bounds = [3,2],my_pos = [1,1],enemy_pos=[2,1],distance=4)
+    room = Room(bounds = [10,10],my_pos = [2,3],enemy_pos=[5,5],distance=200)
     shot = Shot(room,create_path=True)
     shot.ax = room.draw_room()
-    for d in generate_initial_directions(10):
+    bounce_hits = {}
+    for d in generate_initial_directions(room.distance):
         shot.shoot(d)
         if shot.hits:
-            shot.plot_path(show=False,new_fig=False)
+            if shot.bounces in bounce_hits:
+                bounce_hits[shot.bounces] += 1
+            else:
+                bounce_hits[shot.bounces] = 1
+            #shot.plot_path(ax=room.ax,show=False,new_fig=True)
+    bounce_hits = sorted(bounce_hits.items(),key=lambda x:x[0])
+    print("Solutions: {}".format(sum([_[1] for _ in bounce_hits])))
+    plt.figure()
+    plt.plot([_[0] for _ in bounce_hits],[_[1] for _ in bounce_hits])
+    print(bounce_hits)
     plt.show()
