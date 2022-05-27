@@ -9,6 +9,7 @@ The room has integer bounds [1 < x_dim <= 1250, 1 < y_dim <= 1250]. You and the 
 
 For example, if you and the elite trainer were positioned in a room with bounds [3, 2], your_position [1, 1], trainer_position [2, 1], and a maximum shot distance of 4, you could shoot in seven different directions to hit the elite trainer (given as vector bearings from your location): [1, 0], [1, 2], [1, -2], [3, 2], [3, -2], [-3, 2], and [-3, -2]. As specific examples, the shot at bearing [1, 0] is the straight line horizontal shot of distance 1, the shot at bearing [-3, -2] bounces off the left wall and then the bottom wall before hitting the elite trainer with a total shot distance of sqrt(13), and the shot at bearing [1, 2] bounces off just the top wall before hitting the elite trainer with a total shot distance of sqrt(5).
 """
+import itertools
 import random
 import math
 import matplotlib.pyplot as plt
@@ -292,36 +293,59 @@ class Shot:
         if show:
             plt.show()           
             
-            
+
+def generate_bounce_tuples(bounces = 3):
+    #perms = itertools.permutations([0,1,2,3],bounces)
+    perms = itertools.product([0,1,2,3],repeat=bounces)
+    for i,bounce_pair in enumerate(perms):
+        is_bounce_seq = True
+        for k in range(len(bounce_pair)-1):
+            if bounce_pair[k] == bounce_pair[k+1]:
+                is_bounce_seq = False
+                break
+        if not is_bounce_seq:
+            continue
+        for ii,_ in enumerate(bounce_pair):
+            p = bounce_pair[ii:ii+3]
+            if len(p) < 3:
+                break
+            if (p[0] == p[2] and p[1] - p[0] != 2):
+                #print("incorrect pair {}".format(p))
+                is_bounce_seq = False
+                break
+        if is_bounce_seq:
+            yield bounce_pair
+ 
+for t in generate_bounce_tuples(3):
+    print(t)
+exit()
+ 
 if __name__ == "__main__":
     case2 = {"bounds":[300,275],
              "my_pos":[150,150],
              "enemy_pos":[185,100],
              "distance":500
              }
-    room = Room(bounds = [10,10],my_pos = [5,8],enemy_pos=[3,3],distance=50)
+    room = Room(bounds = [4,4],my_pos = [1,1],enemy_pos=[3,2],distance=40)
     shot = Shot(room,create_path=True)
     shot.ax = room.draw_room()
     bounce_hits = {}
     hit_count = 0
     for i,d in enumerate(generate_initial_directions(room.distance)):
-        shot.shoot(d)
+        shot.shoot(d,allowed_bounces=3)
         if shot.hits:
             hit_count += 1
             #f shot.bounces in bounce_hits:
             #    bounce_hits[shot.bounces] += 1
             #else:
             #    bounce_hits[shot.bounces] = 1
-            shot.plot_path(ax=room.ax,show=False,new_fig=True)
-            print(shot.path)
-            shot.path = to_minimal_path(shot.path)
-            shot.plot_path(ax=room.ax,show=False,new_fig=True)
-            print(shot.path)
-            plt.show()
+            if shot.bounces == 3:
+                shot.plot_path(ax=room.ax,show=False,new_fig=True)
+            #plt.show()
     #bounce_hits = sorted(bounce_hits.items(),key=lambda x:x[0])
     print("{} directions tested".format(i))
     print("Solutions: {}".format(hit_count))
     #plt.figure()
     #plt.plot([_[0] for _ in bounce_hits],[_[1] for _ in bounce_hits])
     #print(bounce_hits)
-    #plt.show()
+    plt.show()
