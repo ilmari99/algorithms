@@ -12,35 +12,18 @@ For example, if you and the elite trainer were positioned in a room with bounds 
 import itertools
 import random
 import math
+import time
 import matplotlib.pyplot as plt
 cases = [([3,2],[1,1],[2,1],4,7), ([300,275],[150,150],[185,100],500,9)]
 
 def vector_length(vector):
-    return math.sqrt(vector[0]**2 + vector[1]**2)
+    return math.sqrt(sum([v**2 for v in vector]))
 
 def round_if_close(L):
     """Rounds a list of floats to the nearest integer if they are 'close' to an integer
     """
     return [round(x) if math.isclose(x,round(x),abs_tol=10**(-12)) else x for x in L]
 
-def generate_initial_directions(distance):
-    """Generate distinct shooting directions that are integer pairs (vectors), whose length < distance"""
-    i = 4
-    yield [0,1]
-    yield [0,-1]
-    yield [1,0]
-    yield [-1,0]
-    for x_direction in range(1,distance+1):
-        ymax = int(math.sqrt(distance**2 - x_direction**2))
-        for y_direction in range(1,ymax+1):
-            #if vector_length([x_direction,y_direction]) > distance:
-            #    continue
-            if math.gcd(x_direction,y_direction) == 1:
-                i += 4
-                yield [x_direction,y_direction]
-                yield [x_direction,-y_direction]
-                yield [-x_direction,-y_direction]
-                yield [-x_direction,y_direction]
                 
 def to_minimal_path(path):
     steps = list(path.values())
@@ -207,7 +190,7 @@ class Shot:
             step = [xdist,ychange]
         elif abs(xchange) < abs(xdist):
             step = [xchange,ydist]
-        else:#math.isclose(abs(xchange),abs(ychange))
+        else:
             step = [xdist,ydist]
         return step
     
@@ -244,7 +227,7 @@ class Shot:
     
     def shoot(self,direction, allowed_bounces=float("inf")):
         pos = self.start_pos
-        self.start_direction = direction.copy()
+        self.start_direction = direction
         self.travelled_distance = 0
         self.bounces = 0
         self.path = {0:pos}
@@ -284,7 +267,7 @@ class Shot:
             assert new_fig or ax
         self.fig = ax
         if new_fig:
-            self.ax = room.draw_room()
+            self.ax = self.room.draw_room()
         x = [_[0] for _ in self.path.values()]
         y = [_[1] for _ in self.path.values()]
         self.ax.plot(x,y,label="path")
@@ -309,16 +292,123 @@ def generate_bounce_tuples(bounces = 3):
             p = bounce_pair[ii:ii+3]
             if len(p) < 3:
                 break
-            if (p[0] == p[2] and p[1] - p[0] != 2):
+            if (p[0] == p[2] and abs(p[1] - p[0]) != 2):
                 #print("incorrect pair {}".format(p))
                 is_bounce_seq = False
                 break
         if is_bounce_seq:
             yield bounce_pair
- 
-for t in generate_bounce_tuples(3):
-    print(t)
-exit()
+            
+def generate_initial_directions(distance):
+    """Generate distinct shooting directions that are integer pairs (vectors), whose length < distance"""
+    i = 4
+    yield (0,1)
+    yield (0,-1)
+    yield (1,0)
+    yield (-1,0)
+    for x_direction in range(1,distance+1):
+        ymax = int(math.sqrt(distance**2 - x_direction**2))
+        for y_direction in range(1,ymax+1):
+            #if vector_length([x_direction,y_direction]) > distance:
+            #    continue
+            if math.gcd(x_direction,y_direction) == 1:
+                i += 4
+                yield (x_direction,y_direction)
+                yield (x_direction,-y_direction)
+                yield (-x_direction,-y_direction)
+                yield (-x_direction,y_direction)
+
+
+
+def bounce_tuple_to_direction(bounce_tuple,my_pos,enemy_pos,bounds):
+    """ Converts a bounce tuple (denoting the bounce order) to a direction vector [x,y]
+    """
+    #assert len(bounce_tuple) == 3 # For now
+    d = to_dist_array(my_pos,bounds)
+    e = to_dist_array(enemy_pos,bounds)
+    xdir = []       # Holds the x changes
+    ydir = []       # Holds the  changes
+    first_x = [b for b in bounce_tuple if b in [1,3]]
+    if not first_x:
+        xdir = [abs(enemy_pos[0]-my_pos[0])]
+        xsign = (enemy_pos[0]-my_pos[0])/abs(enemy_pos[0]-my_pos[0])
+    else:
+        first_x = first_x[0]
+        xsign = 1 if first_x == 3 else -1
+    first_y = [b for b in bounce_tuple if b in [0,2]]
+    if not first_y:
+        ydir = [abs(enemy_pos[1]-my_pos[1])]
+        ysign = (enemy_pos[1]-my_pos[1])/abs(enemy_pos[1]-my_pos[1])
+    else:
+        first_y = first_y[0]
+        ysign = 1 if first_y == 2 else -1
+    latest_x = None
+    latest_y = None
+    for i,bounce in enumerate(bounce_tuple):
+        if bounce in [0,2]:
+            if ydir:
+                ydir.append(bounds[1])
+            else:
+                ydir.append(d[bounce])
+            latest_y = bounce
+            continue
+        if bounce in [1,3]:
+            if xdir:
+                xdir.append(bounds[0])
+            else:
+                xdir.append(d[bounce])
+            latest_x = bounce
+            continue
+    if latest_x is not None:
+        xdir.append(e[latest_x])
+    if latest_y is not None:
+        ydir.append(e[latest_y])
+    out = (xsign*sum(xdir),ysign*sum(ydir))
+    return out
+
+def to_dist_array(pos,bounds):
+    d = []
+    d.append(pos[1])
+    d.append(pos[0])
+    d.append(bounds[1]-pos[1])
+    d.append(bounds[0] - pos[0])
+    return d
+
+def solutions_with_n_bounces(n,shot):
+    bounce_gen = generate_bounce_tuples(n)
+    hit_count = 0
+    direction_bt = {}
+    directions = []
+    for i,bt in enumerate(bounce_gen):
+        d = bounce_tuple_to_direction(bt,shot.room.my_pos,shot.room.enemy_pos,shot.room.bounds)
+        if vector_length(d) > shot.room.distance:
+            continue
+        if d in direction_bt.keys():
+            direction_bt[d].append(bt)
+            continue
+        else:
+            direction_bt[d] = [bt]
+        shot.shoot(d)
+        if shot.hits:
+            hit_count += 1
+            directions.append(d)
+            #shot.plot_path(show = False)
+    return hit_count,sorted(directions,key=lambda x : x[0])
+
+def solutions_with_n_bounces2(n,shot):
+    direction_gen = generate_initial_directions(shot.room.distance)
+    hit_count = 0
+    directions = []
+    for i,d in enumerate(direction_gen):
+        shot.shoot(d)
+        if shot.hits and shot.bounces == n:
+            hit_count += 1
+            directions.append(d)
+            #shot.plot_path(show = False)
+    return hit_count,sorted(directions,key=lambda x : x[0])
+    
+        
+            
  
 if __name__ == "__main__":
     case2 = {"bounds":[300,275],
@@ -326,26 +416,27 @@ if __name__ == "__main__":
              "enemy_pos":[185,100],
              "distance":500
              }
-    room = Room(bounds = [4,4],my_pos = [1,1],enemy_pos=[3,2],distance=40)
+    room = Room(bounds = [4,4],my_pos = [1,1],enemy_pos=[3,2],distance=100)
     shot = Shot(room,create_path=True)
-    shot.ax = room.draw_room()
-    bounce_hits = {}
-    hit_count = 0
-    for i,d in enumerate(generate_initial_directions(room.distance)):
-        shot.shoot(d,allowed_bounces=3)
-        if shot.hits:
-            hit_count += 1
-            #f shot.bounces in bounce_hits:
-            #    bounce_hits[shot.bounces] += 1
-            #else:
-            #    bounce_hits[shot.bounces] = 1
-            if shot.bounces == 3:
-                shot.plot_path(ax=room.ax,show=False,new_fig=True)
-            #plt.show()
-    #bounce_hits = sorted(bounce_hits.items(),key=lambda x:x[0])
-    print("{} directions tested".format(i))
-    print("Solutions: {}".format(hit_count))
-    #plt.figure()
-    #plt.plot([_[0] for _ in bounce_hits],[_[1] for _ in bounce_hits])
-    #print(bounce_hits)
+    start = time.time()
+    tp_method_count = solutions_with_n_bounces(6,shot)
+    print("Time taken: {}".format(time.time()-start))
+    start = time.time()
+    direction_method_count = solutions_with_n_bounces2(6,shot)
+    print("Time taken: {}".format(time.time()-start))
+    print("Total number of solutions with bounces (with tuple method): {}".format(tp_method_count))
+    print("Total number of solutions with bounces (with direction method): {}".format(direction_method_count))
+    tp_dirs = tp_method_count[1]
+    dir_dirs = direction_method_count[1]
+    for d in dir_dirs:
+        if d not in tp_dirs:
+            shot.shoot(d)
+            print(d)
+            shot.plot_path(show = True)
+    print("end")
+    for d in tp_dirs:
+        if d not in dir_dirs:
+            shot.shoot(d)
+            print(d)
+            shot.plot_path(show = True)
     plt.show()
