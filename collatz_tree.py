@@ -47,7 +47,7 @@ def prev_step(n):
     return vals
 
 def create_tree(start=1,max_level=10):
-    """Creates a tree with all possible previous Collatz iterations up to a desired depth.
+    """Creates a tree with all possible previous Collatz iterations from start up to a desired depth.
     
     Args:
         start (int, optional): From which number to start. Defaults to 1.
@@ -56,7 +56,7 @@ def create_tree(start=1,max_level=10):
                                     Defaults to 10.
 
     Returns:
-        _type_: _description_
+        ColN: ColN instance, head of the collatz tree
     """
     head = ColN(start) # Create the first node
     level = head.iters
@@ -181,7 +181,7 @@ def plot_level_widths(head, show = True):
     plt.figure()
     plt.title("Amount of numbers with the same amount of iterations")
     xs = list(range(0,len(widths)))
-    plt.scatter(list(range(0,len(widths))),widths)
+    plt.plot(list(range(0,len(widths))),widths)
     plt.xlabel(f"Iterations from {head.number}")
     plt.ylabel("Numbers in a level")
     if show:
@@ -198,7 +198,7 @@ def plot_numbers_reached(head,start=0,end=-1,show=True):
     plt.figure()
     plt.title("Values of numbers with the amount of iterations.")
     for xs,ys in zip(x,levels):
-        plt.scatter([xs]*len(ys), [y.number for y in ys])
+        plt.plot([xs]*len(ys), [y.number for y in ys])
     plt.xlabel(f"Iterations from {head.number}")
     plt.ylabel("Numbers reached")
     if show:
@@ -214,7 +214,7 @@ if __name__ == "__main__":
     coefs = optimize.curve_fit(lambda x,a,b: a*2**(b*x), xs,widths)[0]
     fun = lambda x : coefs[0]*2**(coefs[1]*x)
     print(f"Best fit function for approximating the amount of numbers found with the same number of iterations {coefs[0]}*2^({coefs[1]}*x)")
-    plot_numbers_reached(head,start=30,end=40,show=False)
+    plot_numbers_reached(head,start=1,end=40,show=False)
     plot_level_widths(head,show=False)
     plt.show()
 
