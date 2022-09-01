@@ -11,10 +11,12 @@ class MoskaPlayer:
     moskaGame = None
     rank = None
     thread = None
-    def __init__(self,moskaGame : MoskaGame, pid : int = 0):
+    name = ""
+    def __init__(self,moskaGame : MoskaGame, pid : int = 0, name : str = ""):
         self.moskaGame = moskaGame
         self.hand = MoskaHand(moskaGame)
         self.pid = pid
+        self.name = name if name else f"P{str(pid)}"
         from Turns import PlayFallCardFromHand, PlayFallFromDeck, PlayToOther, InitialPlay, EndTurn
         self.playFallCardFromHand = PlayFallCardFromHand(self.moskaGame,self)
         self.playFallFromDeck = PlayFallFromDeck(self.moskaGame)
@@ -30,13 +32,14 @@ class MoskaPlayer:
         return set([c.value for c in self.moskaGame.cards_to_fall + self.moskaGame.fell_cards]).intersection([c.value for c in self.hand])
     
     def play_to_target(self):
-        """ Return a list of cards that will be played to the target player """
+        """ Played to the target player """
         target = self.moskaGame.get_active_player()
         playable_values = self._playable_values()
         play_cards = []
         if playable_values:
             hand = deepcopy(self.hand)
             play_cards = hand.pop_cards(cond=lambda x : x.value in playable_values,max_cards = len(target.hand) - len(self.moskaGame.cards_to_fall))
+        #print("Playing cards: ",play_cards)
         self.playToOther(target,play_cards)
         
     def play_initial(self):
@@ -46,14 +49,14 @@ class MoskaPlayer:
         hand = deepcopy(self.hand)
         play_cards = hand.pop_cards(cond=lambda x : x.value == min_card,max_cards = len(target.hand) - len(self.moskaGame.cards_to_fall))
         self.initialPlay(target,play_cards)
-    
+
     def play_fall_from_deck(self):
         def fall_method(deck_card):
             for card in self.moskaGame.cards_to_fall:
                 if utils.check_can_fall_card(deck_card,card):
                     return (deck_card,card)
         self.playFallFromDeck(fall_method=fall_method)
-    
+
     def play_fall_card_from_hand(self):
         play_cards = {}
         for fall_card in self.moskaGame.cards_to_fall:
@@ -69,10 +72,12 @@ class MoskaPlayer:
     def end_turn(self):
         pick_cards = self.moskaGame.cards_to_fall
         self.endTurn(pick_cards)
+        return bool(pick_cards)
         
     def set_rank(self):
-        if self.rank is None and not self.hand and len(self.moskaGame.deck) == 0:
-            self.rank = len(self.moskaGame.get_players_condition(cond = lambda x : x.rank is not None)) + 1
+        if self.rank is None:   # if the player hasn't already finished
+            if not self.hand and len(self.moskaGame.deck) == 0: # If the player doesn't have a hand and there are no cards left
+                self.rank = len(self.moskaGame.get_players_condition(cond = lambda x : x.rank is not None)) + 1
         return self.rank
         
     def fold(self):

@@ -20,10 +20,14 @@ class MoskaGame:
         """ Print the status of the game"""
         s = f"Triumph card: {self.triumph_card}\n"
         for pl in self.players:
-            s += f"#{pl.pid}{'*' if self.turnCycle.ptr % len(self.players) == pl.pid else ''} : {pl.hand}\n"
+            s += f"{pl.name}{'*' if self.turnCycle.ptr % len(self.players) == pl.pid else ''} : {pl.hand}\n"
         s += f"Cards to fall : {self.cards_to_fall}\n"
         s += f"Fell cards : {self.fell_cards}\n"
         return s
+    
+    def get_initiating_player(self):
+        active = self.get_active_player()
+        return self.turnCycle.get_prev_condition(cond = lambda x : x.rank is None and x is not active,incr_ptr=False)
     
     def get_players_condition(self,cond = lambda x : True):
         """ get players that match the condition """
@@ -43,7 +47,9 @@ class MoskaGame:
         self.deck.place_to_bottom(self.triumph_card)
     
     def initial_play(self):
-        prev_player = self.turnCycle.get_prev_condition(cond=lambda x : x.rank is None)
+        prev_player = self.get_initiating_player()
+        if not prev_player:
+            return
         prev_player.play_initial()
         print(self)
     
@@ -55,11 +61,13 @@ class MoskaGame:
             for other_player in self.players:
                 if other_player is not player and other_player.rank is None:
                     other_player.play_to_target()
+                    print(f"Player {other_player.name} playing to {player.name}")
                     print(self)
             status = self.cards_to_fall.copy()
             lcount += 1
-            
+    
     def active_player_fall_cards(self):
+        print("Falling cards...")
         player = self.get_active_player()
         player.play_fall_card_from_hand()
         print(self)
@@ -68,9 +76,12 @@ class MoskaGame:
         self.set_triumph()
         print("Started a game of Moska")
         print(self)
+        turn_count = 0
         while len(self.get_players_condition(cond = lambda x : x.rank is None)) > 1:
-            print(f"Playing to {self.get_active_player().pid}")
-            print(self)
+            print(f"Cards left in deck: {len(self.deck)}")
+            print(f"Player {self.get_initiating_player().name} ", end="")
+            print(f"playing to {self.get_active_player().name}")
+            assert not self.get_active_player().rank is not None, "The player is no longer in the game"
             self.initial_play()
             while True:
                 self.let_others_play()
@@ -79,8 +90,19 @@ class MoskaGame:
                 # If no cards were played
                 if all([og == n for og,n in zip(status, self.cards_to_fall)]):
                     break
-            self.get_active_player().end_turn()
-            self.turnCycle.get_next_condition(cond = lambda x : x.rank is None)
+            active_player = self.get_active_player()
+            lifted = active_player.end_turn()
+            print(f"********* Player {active_player.pid} finished turn.*********\n\n")
+            turn_count += 1
+            self.turnCycle.get_next_condition(cond = lambda x : x.rank is None and x is not active_player)
+            if lifted:
+                self.turnCycle.get_next_condition(cond = lambda x : x.rank is None)
+        print("Game finished with ranks:\n")
+        ranks = {pid : rank for pid,rank in zip((pl.pid for pl in self.players),(pl.rank for pl in self.players))}
+        for pid,rank in ranks.items():
+            print(f"P{pid} : {rank}")
+            
+        print(f"Total amount of turns (lifting or falling cards): {turn_count}")
                 
 
             

@@ -29,10 +29,11 @@ class TurnCycle:
     def get_at_index(self,index = None):
         if index is None:
             index = self.ptr
+        #print(f"Returning {index % len(self.population)}")
         return self.population[index % len(self.population)]
         
     def get_next(self, incr_ptr = True):
-        out = self.get_at_index(self.ptr +1)
+        out = self.get_at_index(self.ptr + 1)
         if incr_ptr:
             self.ptr += 1
         return out
@@ -46,15 +47,16 @@ class TurnCycle:
     def get_prev_condition(self, cond, incr_ptr=False):
         """ Returns the previous element in the cycle, that matches the condition"""
         count = 1
-        nxt = self.get_next()
+        og_count = int(self.ptr)
+        nxt = self.get_prev()
         while not cond(nxt):
-            nxt = self.get_next()
+            nxt = self.get_prev()
             if count == len(self.population):
                 nxt = []
                 break
             count += 1
         if not incr_ptr:
-            self.set_pointer(self.ptr - count)
+            self.set_pointer(og_count)
         return nxt
     
     def add_to_population(self,val,ptr=None):
@@ -66,6 +68,7 @@ class TurnCycle:
     def get_next_condition(self,cond = lambda x : True, incr_ptr=True):
         """ Returns the next element in the cycle, that matches the condition"""
         count = 1
+        og_count = int(self.ptr)
         nxt = self.get_next()
         while not cond(nxt):
             nxt = self.get_next()
@@ -74,8 +77,17 @@ class TurnCycle:
                 break
             count += 1
         if not incr_ptr:
-            self.set_pointer(self.ptr - count)
+            self.set_pointer(og_count)
         return nxt
     
     def set_pointer(self,ptr):
         self.ptr = ptr
+        
+        
+if __name__ == "__main__":
+    tc = TurnCycle([0,1,2,3,4,5])
+    print(tc.get_at_index())
+    print(tc.get_next_condition(lambda x : x ==4))
+    print(tc.ptr)
+    print(tc.get_prev_condition(lambda x : x == 0))
+    print(tc.ptr)

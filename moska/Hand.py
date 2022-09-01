@@ -27,7 +27,7 @@ class MoskaHand:
                 out.append(self.cards.pop(self.cards.index(card)))
             if len(out) >= max_cards:
                 break
-        return out
+        return out[0:min(max_cards,len(out))]
     
     def __repr__(self) -> str:
         s = ""
