@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 class LiteModel:
     def __init__(self, path, expand_dims = False):
         if path == "random":
-            self.predict = lambda x: random.random()
+            self.predict = lambda x: [[random.random()]]
             return
         self.expand_dims = expand_dims
         self.interpreter = tf.lite.Interpreter(model_path=path)
@@ -92,14 +92,14 @@ def model_place(board,player):
         #print("Prediction: {}".format(pred))
         board[choice] = 0
     best_choice = max(choice_evaluations,key=lambda x:x[1])
-    print("Prediction: {}".format(best_choice[1]))
+    #print("Prediction: {}".format(best_choice[1]))
     #print("Prediction: {}".format(best_choice[1]))
     board[best_choice[0]] = player
-    print("Vector: {}".format([[player] + list(board.flatten())]))
+    #print("Vector: {}".format([[player] + list(board.flatten())]))
     return board
 
-def model_place_and_random(board,player):
-    if random.random() < 0.25:
+def model_place_and_random(board,player, rate = 0.25):
+    if random.random() < rate:
         return random_place(board,player)
     return model_place(board,player)
 # Checks whether the player has three
@@ -178,7 +178,7 @@ def evaluate(board):
  
  
 # Main function to start the game
-def play_game(players = {"p1":random_place,"p2":random_place},gather_data = False, shuffle = True, verbose = False):
+def play_game(players = {"p1":random_place,"p2":random_place},rate = 0.25, gather_data = False, shuffle = True, verbose = False):
     board, winner, counter = create_board(), 0, 1
     pl_states = {"p1":[], "p2":[]}
     player_ids = {"p1":1, "p2":-1}
@@ -190,7 +190,10 @@ def play_game(players = {"p1":random_place,"p2":random_place},gather_data = Fals
     while winner == 0:
         for player,fun in players.items():
             i = player_ids[player]
-            board = fun(board, i)
+            args = [board,i]
+            if fun == model_place_and_random:
+                args.append(rate)
+            board = fun(*args)
             if verbose:
                 print(board)
             pl_states[player].append([i] + list(board.flatten()))
@@ -224,11 +227,11 @@ def play_game(players = {"p1":random_place,"p2":random_place},gather_data = Fals
     return (winner)
  
 
-def gather_data():
+def gather_data(rate = 0.25):
     print("Gathering data...")
     wins = {"p1":0,"p2":0,"tie":0}
     for i in range(5000):
-        winner = play_game(players = {"p1":model_place_and_random,"p2":random_place}, gather_data = True,shuffle=True,verbose=False)
+        winner = play_game(players = {"p1":model_place_and_random,"p2":random_place}, rate=rate, gather_data = True,shuffle=True,verbose=False)
         wins[winner] += 1
     print(wins)
         
@@ -253,34 +256,34 @@ def simulate_virtual_gpus():
 
 
 def train_model():
-    simulate_virtual_gpus()
+    #simulate_virtual_gpus()
     print("Training model...")
     dataset = get_dataset("states.txt",add_channel_dim=True)
     print(dataset.take(1).as_numpy_iterator().next())
     #print(dataset.take(1).as_numpy_iterator().next())
-    with tf.device("/GPU:0"):
-        model = tf.keras.models.Sequential([
-            #tf.keras.layers.Conv1D(16, 5, activation='relu',input_shape=(10,1),padding="same",data_format="channels_last"),
-            tf.keras.layers.Conv1D(32, 3, activation='relu',input_shape=(10,1),padding="same",data_format="channels_last"),
-            tf.keras.layers.Conv1D(16, 3, activation='relu',padding="same",data_format="channels_last"),
-            tf.keras.layers.Flatten(),
-            tf.keras.layers.Dense(20, activation='linear'),#,input_shape=(10,)),
-            tf.keras.layers.LeakyReLU(alpha=0.1),
-            tf.keras.layers.Dropout(0.3),
-            tf.keras.layers.Dense(20, activation='linear'),#,input_shape=(10,)),
-            tf.keras.layers.LeakyReLU(alpha=0.1),
-            tf.keras.layers.Dropout(0.3),
-            tf.keras.layers.Dense(10, activation='linear'),#,input_shape=(10,)),
-            tf.keras.layers.LeakyReLU(alpha=0.1),
-            tf.keras.layers.Dense(1, activation='sigmoid')
-        ])
-        model.compile(optimizer='adam',
-                    loss='mse',
-                    metrics=['accuracy'])
-    validation_dataset = dataset.take(1000).batch(32)
-    test_dataset = dataset.skip(1000).take(2000).batch(32)
-    dataset = dataset.skip(2000).shuffle(1000).batch(32)
-    early_stop = tf.keras.callbacks.EarlyStopping(monitor='val_loss', min_delta = 0.00001, patience=6, restore_best_weights=True)
+    #with tf.device("/GPU:0"):
+    model = tf.keras.models.Sequential([
+        #tf.keras.layers.Conv1D(16, 5, activation='relu',input_shape=(10,1),padding="same",data_format="channels_last"),
+        tf.keras.layers.Conv1D(32, 3, activation='relu',input_shape=(10,1),padding="same",data_format="channels_last"),
+        tf.keras.layers.Conv1D(16, 3, activation='relu',padding="same",data_format="channels_last"),
+        tf.keras.layers.Flatten(),
+        tf.keras.layers.Dense(20, activation='linear'),#,input_shape=(10,)),
+        tf.keras.layers.LeakyReLU(alpha=0.1),
+        tf.keras.layers.Dropout(0.3),
+        tf.keras.layers.Dense(20, activation='linear'),#,input_shape=(10,)),
+        tf.keras.layers.LeakyReLU(alpha=0.1),
+        tf.keras.layers.Dropout(0.3),
+        tf.keras.layers.Dense(10, activation='linear'),#,input_shape=(10,)),
+        tf.keras.layers.LeakyReLU(alpha=0.1),
+        tf.keras.layers.Dense(1, activation='sigmoid')
+    ])
+    model.compile(optimizer='adam',
+                loss='mse',
+                metrics=['accuracy'])
+    validation_dataset = dataset.take(500).batch(32)
+    test_dataset = dataset.skip(500).take(500).batch(32)
+    dataset = dataset.skip(1000).shuffle(1000).batch(32)
+    early_stop = tf.keras.callbacks.EarlyStopping(monitor='val_loss', min_delta = 0.0001, patience=6, restore_best_weights=True)
     model.fit(dataset, epochs=200,validation_data=validation_dataset, callbacks=[early_stop],verbose=1)
     model.evaluate(test_dataset, verbose=0)
     model.save("model.h5")
@@ -305,21 +308,25 @@ def play_as_human():
 
 MODEL = None
 if __name__ == "__main__":
-    MODEL = LiteModel("model.tflite", expand_dims=True)
+    #MODEL = LiteModel("model.tflite", expand_dims=True)
     #play_games()
-    play_as_human()
-    exit()
+    #play_as_human()
+    #exit()
     p1_win_percentage = []
-    for i in range(20):
-        #path = "random" if i == 0 else "model.tflite"
-        path = "model.tflite"
+    rate = 0.2
+    for i in range(5):
+        path = "random" if i == 0 else "model.tflite"
         MODEL = LiteModel(path, expand_dims=True)
         win_perc = play_games()
         p1_win_percentage.append(win_perc)
-        os.remove("states.txt")
-        gather_data()
+        #os.remove("states.txt")
+        gather_data(rate = rate)
         train_model()
-        os.system("./convert_tf_to_tflite.py")
+        os.system("py ./convert_tf_to_tflite.py")
         print(p1_win_percentage)
-    plt.plot(p1_win_percentage)
+    fig,ax = plt.subplots()
+    ax.plot(p1_win_percentage, label="Win percentage against random play")
+    ax.set_xlabel("Training iteration")
+    ax.set_ylabel("Win percentage")
+    ax.set_title("Training progress")
     plt.show()
