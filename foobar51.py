@@ -105,8 +105,10 @@ This was the last challenge in the series, and I'm proud of completing all the c
 
 
 import math
-from fractions import Fraction, gcd
+from fractions import Fraction
+from math import gcd
 from collections import Counter
+import time
 
 def solution(w,h,s):
     """
@@ -198,5 +200,19 @@ def coefficient_of_cycle(j):
     for n in range(1,len(j)+1):
         s *= math.factorial(j[n-1])*n**j[n-1]
     return Fraction(1,s)
+
+if __name__ == "__main__":
+    width = 20
+    height = 12
+    nstates = 3
+    start = time.time()
+    # Consider a grid of 6x4, with 3 possible states for each cell.
+    # We calculate the number of non-equivalent grids with these dimensions and states.
+    print("Grid of size {}x{} with {} possible states:".format(width,height,nstates))
+    ans = solution(width,height,nstates)
+    print("Has {} different non-equivalent grids.".format(ans))
+    print("Number of digits: {}".format(len(ans)))
+    print("Time taken: {} seconds".format(time.time()-start))
+
 
 
