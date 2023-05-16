@@ -4,9 +4,9 @@ HENCE only if starting from 1, the levels correspond to all numbers with the lev
 
 TODO: create a graphical representation of the tree with matplotlib
 """
+
 import itertools as it
 import matplotlib.pyplot as plt
-import numpy as np
 from scipy import optimize
 
 class ColN:
@@ -174,6 +174,26 @@ def flatten(head):
         nodes = nodes + new_nodes
     return nodes
 
+def plot_as_tree(head,show=True):
+    """ 
+    Plot the created tree, so that the root is one and the numbers in the next level are connected to it,
+    and so on.
+    """
+    fig, ax = plt.subplots()
+    nodes = flatten(head)
+    for n in nodes:
+        if n.parent:
+            ax.plot([n.parent.iters,n.iters],[n.parent.number,n.number])
+    ax.set_xlabel("Number of iterations to reach 1")
+    ax.set_ylabel("Number (log scale)")
+    ax.grid(True)
+    # Logarithmic scale
+    ax.set_yscale('log')
+    ax.set_title("Collatz tree in log10")
+    if show:
+        plt.show()
+    return
+
 def plot_level_widths(head, show = True):
     """Plots the amount of numbers (y) versus the corresponding iterations
     """
@@ -207,15 +227,24 @@ def plot_numbers_reached(head,start=0,end=-1,show=True):
     
 
 if __name__ == "__main__":
-    head = create_tree(start=1,max_level=40)
+    # Create the collatz tree with a root of 1 up to 30 reverse collatz steps
+    head = create_tree(start=1,max_level=45)
+    # Display the smallest number in each level
     print_tree(head,format_mode="smallest")
+
+    # Fit a function to the amount of numbers found with the same amount of iterations
     widths = get_widths(head)
     xs = list(range(0,len(widths)))
     coefs = optimize.curve_fit(lambda x,a,b: a*2**(b*x), xs,widths)[0]
     fun = lambda x : coefs[0]*2**(coefs[1]*x)
     print(f"Best fit function for approximating the amount of numbers found with the same number of iterations {coefs[0]}*2^({coefs[1]}*x)")
+
+    # Plot all numbers reached with the amount of iterations
     plot_numbers_reached(head,start=1,end=40,show=False)
+    # Plot the amount of numbers found with the same amount of iterations
     plot_level_widths(head,show=False)
+    # Plot the tree
+    plot_as_tree(head,show=True)
     plt.show()
 
     
