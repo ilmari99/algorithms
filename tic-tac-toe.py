@@ -230,8 +230,8 @@ def play_game(players = {"p1":random_place,"p2":random_place},rate = 0.25, gathe
 def gather_data(rate = 0.25):
     print("Gathering data...")
     wins = {"p1":0,"p2":0,"tie":0}
-    for i in range(5000):
-        winner = play_game(players = {"p1":model_place_and_random,"p2":random_place}, rate=rate, gather_data = True,shuffle=True,verbose=False)
+    for i in range(50000):
+        winner = play_game(players = {"p1":model_place_and_random,"p2":model_place_and_random}, rate=rate, gather_data = True,shuffle=True,verbose=False)
         wins[winner] += 1
     print(wins)
         
@@ -267,7 +267,7 @@ def train_model():
         tf.keras.layers.Conv1D(32, 3, activation='relu',input_shape=(10,1),padding="same",data_format="channels_last"),
         tf.keras.layers.Conv1D(16, 3, activation='relu',padding="same",data_format="channels_last"),
         tf.keras.layers.Flatten(),
-        tf.keras.layers.Dense(20, activation='linear'),#,input_shape=(10,)),
+        tf.keras.layers.Dense(20, activation='linear'),#,input_shape=(10,))
         tf.keras.layers.LeakyReLU(alpha=0.1),
         tf.keras.layers.Dropout(0.3),
         tf.keras.layers.Dense(20, activation='linear'),#,input_shape=(10,)),
@@ -284,7 +284,7 @@ def train_model():
     test_dataset = dataset.skip(500).take(500).batch(32)
     dataset = dataset.skip(1000).shuffle(1000).batch(32)
     early_stop = tf.keras.callbacks.EarlyStopping(monitor='val_loss', min_delta = 0.0001, patience=6, restore_best_weights=True)
-    model.fit(dataset, epochs=200,validation_data=validation_dataset, callbacks=[early_stop],verbose=1)
+    model.fit(dataset, epochs=25,validation_data=validation_dataset, callbacks=[early_stop],verbose=1)
     model.evaluate(test_dataset, verbose=0)
     model.save("model.h5")
     # clear
@@ -319,7 +319,7 @@ if __name__ == "__main__":
         MODEL = LiteModel(path, expand_dims=True)
         win_perc = play_games()
         p1_win_percentage.append(win_perc)
-        #os.remove("states.txt")
+        os.remove("states.txt")
         gather_data(rate = rate)
         train_model()
         os.system("py ./convert_tf_to_tflite.py")
