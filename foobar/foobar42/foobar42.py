@@ -26,6 +26,17 @@ in seven different directions to hit the elite trainer (given as vector bearings
 wall and then the bottom wall before hitting the elite trainer with a total shot distance of sqrt(13), and the shot 
 at bearing [1, 2] bounces off just the top wall before hitting the elite trainer with a total shot distance of sqrt(5).
 
+ME
+=========================
+TLDR; In this problem we are given a room, and we need to count how many different directions we can shoot a beam,
+so that it reflects off the walls and hits the target, so that the total distance the beam travels is less than a given distance.
+
+This was a very interesting problem, and it took a while to figure that mirroring the rooms was the key!
+I have never seen such a problem, and even after figuring the idea, it was still hard to implement.
+
+It still creates some excess tiles and isn't optimal, but the idea is correct and that was enough to pass the test cases.
+
+The code for this problem is messy, because it includes the plotting options.
 
 """
 import math
@@ -87,7 +98,7 @@ def tile_to_left_lower_corner(tar,tile,ind):
     First goes to left side of the array, and then to the bottom of the array."""
     while True:
         if ind[1] > 0:
-            d = (0,-1)#directions.pop(0)
+            d = (0,-1)
         elif ind[0] > 0:
             d = (-1,0)
         else:
@@ -112,7 +123,7 @@ def gen_next_tile(tar,tile,ind):
     while True:
         if not directions:
             coldir = -1*coldir
-            directions = [(0,coldir) for _ in range(size[0]-1)] + [(1,0)]#[(xdir,0)]*dist[0] + [(0,-1)]
+            directions = [(0,coldir) for _ in range(size[0]-1)] + [(1,0)]
         d = directions.pop(0)
         ind = [ind[0]+d[0],ind[1]+d[1]]
         try:
@@ -128,7 +139,6 @@ def generate_directions(bounds,my_pos,enemy_pos,distance):
     ogtile.change_position_to_relative(my_pos)
     assert ogtile.my_pos == (0,0)
     tile_arr = create_none_array(bounds, distance, my_pos)
-    #print("Tile array size: (",len(tile_arr),",",len(tile_arr[0]),")")
     rind,cind = insert_center_tile_inplace(tile_arr,ogtile)
     next_tile_gen = gen_next_tile(tile_arr,ogtile,(rind,cind))
     for i,t in enumerate(next_tile_gen):
@@ -180,8 +190,10 @@ def solution(bounds,my_pos,enemy_pos,distance,plot=False):
         ax.axes.set_visible(True)
     if plot == "path":
         Tile(my_pos, enemy_pos,(0,0),bounds).plot_tile(ax=ax)
+        ax.set_title("All possible laser paths to target, distance = "+str(distance),fontsize=20)
     elif plot == "solution":
         c = Circle((0,0),distance,color='b',fill=False)
+        ax.set_title("Illustration of the solution, where we mirror rooms and\nsee the headings to hit the target in each mirrored room",fontsize=13)
         ax.add_patch(c)
     # Store the closest hit (heading,dist -pair) in a direction (heading) to either the target, self, or a corner
     # If the beam at heading hits self, or a corner (in which cases the beam never hits the target) the distance is stored as a negative value to filter later
@@ -215,9 +227,21 @@ def solution(bounds,my_pos,enemy_pos,distance,plot=False):
     return len(hits)
 
 if __name__ == "__main__":
-    case = generate_case(dimensions = (5,5),distance=150)
-    solution(*case,plot='solution')
-    plt.show()
+    plot = False
+
+    if plot:
+        # To plot, uncomment the following lines
+        case = generate_case(dimensions = (3,5),distance=12)
+        nhits = solution(*case,plot='solution')
+        print("Number of ways to hit the target:",nhits)
+        solution(*case,plot='path')
+        plt.show()
+    
+    # It is infeasible to plot the solution for large distance/room sizes, because plotting requires a lot of additional computation
+    else:
+        case = generate_case(dimensions = (3,5),distance=1000)
+        nhits = solution(*case)
+        print("Number of ways to hit the target:",nhits)
 
         
         
