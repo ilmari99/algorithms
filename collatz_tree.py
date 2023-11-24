@@ -8,6 +8,8 @@ import itertools as it
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy import optimize
+R = 5
+B = 2
 
 class ColN:
     """An object of this class represents a node in the tree
@@ -30,16 +32,21 @@ class ColN:
 
 def prev_step(n):
     """Returns a list of length 1 or 2 with the possible previous collatz numbers of n.
-    the previous collatz numbers are always atleast [2*n], but can also be [2*n, (n-1)/3]
+    the previous collatz numbers are always atleast [B*n], but can also be [2*n, (n-R*n % B)/R]
     IF (n-1) % 3 == 0 AND ((n-1)/3) % 2 != 0
     """
-    vals = [2*n,0]
-    lower_val = (n - 1) / 3
+    vals = [B*n,0]
+    # Rem tells us how much we have to add to n (R*n) to get a number divisible by B
+    rem = R - B
+    lower_val = (n - rem) / R
     pos = True
+    print(f"n: {n}, rem: {rem}, lower_val: {lower_val}")
     if n<0:
         pos = False
     # Check if the lower_val is compatible
-    if ((n - 1) % 3 == 0) and (lower_val % 2 != 0): #If the lower_val is divisible by 2, then it can't be the previous step
+    #If the lower_val is divisible by B, then it can't be the previous step
+    #if ((n - 1) % 3 == 0) and (lower_val % 2 != 0):
+    if ((n - rem) % R == 0) and (lower_val % B != 0):
         vals[1] = int(lower_val)
     # The previous number can not fall below 1 for positive numbers or above -1 for negative
     if (pos and vals[1] <= 1) or (not pos and vals[1]>=-1):
