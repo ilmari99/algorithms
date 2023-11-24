@@ -324,6 +324,7 @@ if __name__ == "__main__":
         win_perc = play_games()
         p1_win_percentage.append(win_perc)
         os.remove("states.txt")
+        os.remove("states.txt")
         gather_data(rate = rate)
         os.remove("model.tflite")
         train_model()

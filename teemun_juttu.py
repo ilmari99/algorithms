@@ -5,6 +5,11 @@ import matplotlib.pyplot as plt
 from scipy.ndimage import rotate
 import math
 
+"""
+This is a short script I started doing to attempt to model where are holes
+in an object by rotating it and seeing how much radiation is absorbed in which part.
+"""
+
 class AbsorptionMatrix:
     size = (0,0)
     center = (0,0)
@@ -152,9 +157,9 @@ class Circle(AbsorptionMatrix):
     
 
 
-circle = Circle(12, absorption=0.1)
+circle = Circle(512, absorption=0.1)
 circle.plot()
-circle.make_holes(hole_sz = (3,3),n_holes=4)
+circle.make_holes(hole_sz = (25,25),n_holes=4)
 print(circle.get_parsed_measurement())
 circle.plot()
 circle.rotate(45,inplace=True)

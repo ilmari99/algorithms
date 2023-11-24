@@ -126,6 +126,9 @@ if __name__ == "__main__":
     if len(sys.argv) == 1:
         print("Usage: python3 foobar33.py <low> <high> <how many random numbers to pick>")
         print("For a custom case: python3 foobar33.py --custom <int1> <int2> <int3> .......")
+        print(f"Running random case with 10000 numbers between 1 and 10000")
+        case = [random.randint(1,10000) for i in range(10000)]
+        print("There are",solution(case),"lucky triplets in the list.")
     elif len(sys.argv) == 4:
         L = [random.randint(int(sys.argv[1]), int(sys.argv[2])) for i in list(range(1,int(sys.argv[3])))]
         print("There are",solution(L),"lucky triplets in the list.")

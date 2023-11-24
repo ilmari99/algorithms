@@ -64,8 +64,9 @@ ME
 This was a fun problem. I had a hard time understanding the problem, and my initial solution (which passed all Google test cases (5 in total))
 was actually incorrect, but it passed the test cases by chance.
 
-There are algorithms for finding the maximum flow, but I got carried away with my idea and finally got it working.
+There are algorithms for finding the maximum flow, but I got carried away with my own algorithm idea and got it working.
 """
+import time
 import numpy as np
 
 
@@ -259,3 +260,16 @@ def update_residual_matrix(flow_matrix,capacity_matrix, dexits, dentrances,debug
             flow_matrix[nrow][list(dentrances.keys())[0]] += balance
             balance = 0
     return flow_matrix
+
+if __name__ == "__main__":
+    # Creates a path matrix and entrances and exits 
+    case = create_case(vertices = 100, max_edge_weight=5, nentrances=2, nexits=2)
+    mat = case[0]
+    print("Path matrix: \n{}".format(np.array(mat)))
+    print("Exits: {}".format(case[1]))
+    print("Entrances: {}".format(case[2]))
+    start = time.time()
+    sol = solution(*case)
+    end = time.time()
+    print(sol)
+    print("Time taken: {}".format(end-start))
