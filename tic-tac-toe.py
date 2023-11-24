@@ -8,6 +8,7 @@ import random
 from time import sleep
 import tensorflow as tf
 import matplotlib.pyplot as plt
+from convert_tf_to_tflite import convert_to_tflite
 #MODEL = tf.keras.models.load_model('model.h5')
 
 class LiteModel:
@@ -230,8 +231,8 @@ def play_game(players = {"p1":random_place,"p2":random_place},rate = 0.25, gathe
 def gather_data(rate = 0.25):
     print("Gathering data...")
     wins = {"p1":0,"p2":0,"tie":0}
-    for i in range(5000):
-        winner = play_game(players = {"p1":model_place_and_random,"p2":random_place}, rate=rate, gather_data = True,shuffle=True,verbose=False)
+    for i in range(10000):
+        winner = play_game(players = {"p1":model_place_and_random,"p2":model_place_and_random}, rate=rate, gather_data = True,shuffle=True,verbose=False)
         wins[winner] += 1
     print(wins)
         
@@ -258,33 +259,36 @@ def simulate_virtual_gpus():
 def train_model():
     #simulate_virtual_gpus()
     print("Training model...")
-    dataset = get_dataset("states.txt",add_channel_dim=True)
+    dataset = get_dataset("states.txt",add_channel_dim=True).shuffle(10000)
     print(dataset.take(1).as_numpy_iterator().next())
     #print(dataset.take(1).as_numpy_iterator().next())
     #with tf.device("/GPU:0"):
-    model = tf.keras.models.Sequential([
-        #tf.keras.layers.Conv1D(16, 5, activation='relu',input_shape=(10,1),padding="same",data_format="channels_last"),
-        tf.keras.layers.Conv1D(32, 3, activation='relu',input_shape=(10,1),padding="same",data_format="channels_last"),
-        tf.keras.layers.Conv1D(16, 3, activation='relu',padding="same",data_format="channels_last"),
-        tf.keras.layers.Flatten(),
-        tf.keras.layers.Dense(20, activation='linear'),#,input_shape=(10,)),
-        tf.keras.layers.LeakyReLU(alpha=0.1),
-        tf.keras.layers.Dropout(0.3),
-        tf.keras.layers.Dense(20, activation='linear'),#,input_shape=(10,)),
-        tf.keras.layers.LeakyReLU(alpha=0.1),
-        tf.keras.layers.Dropout(0.3),
-        tf.keras.layers.Dense(10, activation='linear'),#,input_shape=(10,)),
-        tf.keras.layers.LeakyReLU(alpha=0.1),
-        tf.keras.layers.Dense(1, activation='sigmoid')
-    ])
-    model.compile(optimizer='adam',
-                loss='mse',
-                metrics=['accuracy'])
+    if os.path.exists("model.h5"):
+        model = tf.keras.models.load_model("model.h5")
+    else:
+        model = tf.keras.models.Sequential([
+            #tf.keras.layers.Conv1D(16, 5, activation='relu',input_shape=(10,1),padding="same",data_format="channels_last"),
+            tf.keras.layers.Conv1D(32, 3, activation='relu',input_shape=(10,1),padding="same",data_format="channels_last"),
+            tf.keras.layers.Conv1D(16, 3, activation='relu',padding="same",data_format="channels_last"),
+            tf.keras.layers.Flatten(),
+            tf.keras.layers.Dense(20, activation='linear'),#,input_shape=(10,)),
+            tf.keras.layers.LeakyReLU(alpha=0.1),
+            tf.keras.layers.Dropout(0.3),
+            tf.keras.layers.Dense(20, activation='linear'),#,input_shape=(10,)),
+            tf.keras.layers.LeakyReLU(alpha=0.1),
+            tf.keras.layers.Dropout(0.3),
+            tf.keras.layers.Dense(10, activation='linear'),#,input_shape=(10,)),
+            tf.keras.layers.LeakyReLU(alpha=0.1),
+            tf.keras.layers.Dense(1, activation='sigmoid')
+        ])
+        model.compile(optimizer='adam',
+                    loss='mae',
+                    metrics=['accuracy'])
     validation_dataset = dataset.take(500).batch(32)
     test_dataset = dataset.skip(500).take(500).batch(32)
-    dataset = dataset.skip(1000).shuffle(1000).batch(32)
+    dataset = dataset.skip(1000).batch(32)
     early_stop = tf.keras.callbacks.EarlyStopping(monitor='val_loss', min_delta = 0.0001, patience=6, restore_best_weights=True)
-    model.fit(dataset, epochs=200,validation_data=validation_dataset, callbacks=[early_stop],verbose=1)
+    model.fit(dataset, epochs=30,validation_data=validation_dataset, callbacks=[early_stop],verbose=1)
     model.evaluate(test_dataset, verbose=0)
     model.save("model.h5")
     # clear
@@ -313,16 +317,17 @@ if __name__ == "__main__":
     #play_as_human()
     #exit()
     p1_win_percentage = []
-    rate = 0.2
+    rate = 0.25
     for i in range(5):
         path = "random" if i == 0 else "model.tflite"
         MODEL = LiteModel(path, expand_dims=True)
         win_perc = play_games()
         p1_win_percentage.append(win_perc)
-        #os.remove("states.txt")
+        os.remove("states.txt")
         gather_data(rate = rate)
+        os.remove("model.tflite")
         train_model()
-        os.system("py ./convert_tf_to_tflite.py")
+        convert_to_tflite(file_path="model.h5", output_file="model.tflite")
         print(p1_win_percentage)
     fig,ax = plt.subplots()
     ax.plot(p1_win_percentage, label="Win percentage against random play")
