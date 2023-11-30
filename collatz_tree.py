@@ -7,9 +7,12 @@ TODO: create a graphical representation of the tree with matplotlib
 
 import itertools as it
 import matplotlib.pyplot as plt
+import numpy as np
 from scipy import optimize
-R = 5
-B = 2
+from collections import OrderedDict
+import sympy as sp
+from tqdm import tqdm
+from math import gcd
 
 class ColN:
     """An object of this class represents a node in the tree
@@ -40,7 +43,7 @@ def prev_step(n):
     rem = R - B
     lower_val = (n - rem) / R
     pos = True
-    print(f"n: {n}, rem: {rem}, lower_val: {lower_val}")
+    #print(f"n: {n}, rem: {rem}, lower_val: {lower_val}")
     if n<0:
         pos = False
     # Check if the lower_val is compatible
@@ -52,6 +55,14 @@ def prev_step(n):
     if (pos and vals[1] <= 1) or (not pos and vals[1]>=-1):
         vals.pop(-1)
     return vals
+
+def collatz_step(n):
+    """Returns the next number in the collatz sequence.
+    """
+    if n % B == 0:
+        return int(n/B)
+    else:
+        return int(R*n + R - B)
 
 def create_tree(start=1,max_level=10):
     """Creates a tree with all possible previous Collatz iterations from start up to a desired depth.
@@ -97,7 +108,7 @@ def print_smallest(head):
     nodes = [head]
     start = head.number
     while None not in nodes:
-        print(f"Smallest number with {i} iterations from {start} is {min([n.number for n in nodes])}")
+        print(f"Smallest (abs) number with {i} iterations from {start} is {min([abs(n.number) for n in nodes])}")
         nodes = [n.children for n in nodes]
         nodes = list(it.chain(*nodes))
         i = i + 1
@@ -190,12 +201,11 @@ def plot_as_tree(head,show=True):
     nodes = flatten(head)
     for n in nodes:
         if n.parent:
-            ax.plot([n.parent.iters,n.iters],[n.parent.number,n.number])
+            ax.plot([n.parent.iters,n.iters],[abs(n.parent.number),abs(n.number)])
     ax.set_xlabel("Number of iterations to reach 1")
     ax.set_ylabel("Number (log scale)")
     ax.grid(True)
-    # Logarithmic scale
-    ax.set_yscale('log')
+    ax.set_yscale("log")
     ax.set_title("Collatz tree in log10")
     if show:
         plt.show()
@@ -231,21 +241,135 @@ def plot_numbers_reached(head,start=0,end=-1,show=True):
     if show:
         plt.show()
     return
+
+def run_collatz_sequence(x, max_iters=1e4):
+    """Run the collatz sequence on a number x and return the amount of iterations it took to reach 1.
+    """
+    iters = 0
+    visited_nums = OrderedDict()
+    while iters < max_iters:
+        if x in visited_nums:
+            # Return the number of iterations, the cycle as a list, and whether the number is repeating
+            cycle_begin_idx = list(visited_nums.keys()).index(x)
+            cycle = list(visited_nums.keys())[cycle_begin_idx:]
+            return iters, cycle
+        visited_nums[x] = None
+        x = collatz_step(x)
+        iters += 1
+    return iters, []
     
 
+def find_repeating_patterns(n=10000, to_positives=True):
+    """ Run the collatz sequence for n numbers and find whether numbers always end up in a cycle.
+    """
+    cycles = set()
+    range_ = range(1,n) if to_positives else range(-1,-n-1,-1)
+    for i in range_:
+        iters, cycle = run_collatz_sequence(i)
+        # If we have a cycle, AND the cycle is not an already found cycle with just a different order
+        if cycle:
+            ordered_cycle = tuple(sorted(cycle))
+            if ordered_cycle not in cycles:
+                cycles.add(ordered_cycle)
+    return cycles
+
+def find_cycle_solutions(nups, ndowns):
+    """ Solve a system of equations, where
+    we have nups (n_i = (n_i+1 - r - b) / r) and ndowns (n_i = b*n_i+1)
+    """
+    # first equation is n_1 = (n_k - r - b) / r, where k is the last index (nups + ndowns)
+    # After that put the equations in any order
+    
+    A = np.zeros((nups + ndowns, nups + ndowns))
+    b = np.zeros((nups + ndowns, 1))
+    # The up equations are linear
+    # n_i*r - n_i-1 = -R -B
+    # However, to get a full rank matrix, the first row loops back to the last row,
+    # so we set the first row as
+    # n_1*r - n_k = -R - B
+    A[0,0] = R
+    A[0,-1] = -1
+    b[0] = -R - B
+    #print(f"First row with n_{0}*R - n_{nups + ndowns} = -R - B")
+    for i in range(1,nups):
+        A[i,i] = R
+        A[i,i-1] = -1
+        b[i] = -R - B
+        #print(f"Row with n_{i}*R - n_{i-1} = -R - B")
+    #print(f"Last row with n_{i} - n_{i+1} = -R - B")
+    #print(f"A: {A}")
+    # The down equations are of the form
+    # n_i = B*n_i-1
+    # n_i - B*n_i-1 = 0
+    for i in range(nups, nups + ndowns):
+        A[i,i] = 1
+        A[i,i-1] = -B
+        b[i] = 0
+    #print(f"Last row with n_{i} - B*n_{i-nups} = 0")
+    #print(f"A: {A}")
+    # Solve the system of equations
+    try:
+        sols = np.linalg.solve(A,b)
+        print(f"Solutions: {sols}")
+        if check_cycle_solution_vector(sols):
+            sols = np.cast[int](np.round(sols)).flatten()
+            sols = sols
+    except np.linalg.LinAlgError:
+        print("Singular matrix, no solutions")
+        return np.array([])
+    return sols
+    
+def check_cycle_solution_vector(vec):
+    """ Check if all values in 'vec' are close to an integer.
+    """
+    return np.allclose(vec, np.round(vec), atol=1e-4)
+
+
+
 if __name__ == "__main__":
+    R = 3
+    B = 2
     # Create the collatz tree with a root of 1 up to 30 reverse collatz steps
-    head = create_tree(start=1,max_level=45)
+    head = create_tree(start=1,max_level=40)
     # Display the smallest number in each level
     print_tree(head,format_mode="smallest")
-
     # Fit a function to the amount of numbers found with the same amount of iterations
     widths = get_widths(head)
     xs = list(range(0,len(widths)))
     coefs = optimize.curve_fit(lambda x,a,b: a*2**(b*x), xs,widths)[0]
     fun = lambda x : coefs[0]*2**(coefs[1]*x)
     print(f"Best fit function for approximating the amount of numbers found with the same number of iterations {coefs[0]}*2^({coefs[1]}*x)")
-
+    cycle_ends = find_repeating_patterns(n=100, to_positives=True)
+    print(f"Found possible cycle ends: {cycle_ends}")
+    print(f"Validating solutions found from empirical tests")
+    for sol in cycle_ends:
+        # Check that the solution is valid, and then run the collatz sequence on it
+        if check_cycle_solution_vector(sol):
+            random_values_from_cycle = np.random.choice(sol)
+            iters, cycle = run_collatz_sequence(random_values_from_cycle)
+            print(f"Time to reach cycle: {iters} with cycle: {cycle} and start value: {random_values_from_cycle}")
+    print(f"\nFinding solutions for the cycle equations")
+    valid_sols = []
+    for nups in tqdm(range(1,7)):
+        for ndowns in range(1,7):
+            print(f"Trying nups={nups} and ndowns={ndowns}")
+            sols = find_cycle_solutions(nups, ndowns)
+            if check_cycle_solution_vector(sols):
+                valid_sols.append(sols)
+                print(f"Found valid solution with nups={nups} and ndowns={ndowns}: {sols}")
+    #print(f"Found solutions for the cycle equations: {sols}")
+    #print(f"Valid solutions: {valid_sols}")
+    print(f"Validating solutions found from Cycle Equations")
+    for sol in valid_sols:
+        # Check that the solution is valid, and then run the collatz sequence on it
+        if check_cycle_solution_vector(sol):
+            for val in sol:
+                iters, cycle = run_collatz_sequence(val)
+                if cycle:
+                    print(f"Time to reach cycle: {iters} with cycle: {cycle} and start value: {val}")
+            
+    
+    exit()
     # Plot all numbers reached with the amount of iterations
     plot_numbers_reached(head,start=1,end=40,show=False)
     # Plot the amount of numbers found with the same amount of iterations
