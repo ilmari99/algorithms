@@ -92,7 +92,7 @@ def find_sharing_submatrices(P, j, get_real_indices=False):
     j_to_real_indices_map = {}
     for submat_index in range((P.shape[0]-1)*(P.shape[1]-1)):
         j_to_real_indices_map[submat_index] = get_real_indices_of_submatrix(P, submat_index)
-        print(f"submat_index = {submat_index}, j_to_real_indices_map[submat_index] = {j_to_real_indices_map[submat_index]}")
+        #print(f"submat_index = {submat_index}, j_to_real_indices_map[submat_index] = {j_to_real_indices_map[submat_index]}")
         
     # Find which submatrices share a value with submatrix j
     # The shared submatrices are the submatrices that are connected to submatrix j.
@@ -162,10 +162,8 @@ def nested_tuple_to_array(nested_tuple):
     """ Convert a nested tuple to a numpy array.
     """
     return np.array(nested_tuple, dtype=np.int32)
-    
-    
-    
-    
+
+
 def get_previous_states(input):
     """ Calculate a deconvolution operation.
     We can not know the previous state exactly, but we can use this to find A solution.
@@ -185,7 +183,7 @@ def get_previous_states(input):
     full_placements = list(itertools.chain.from_iterable(itertools.combinations(range(4), r) for r in range(1, 5)))
     full_placements.append((-1,))
     full_placements = set(full_placements)
-    print(f"full_placements = {full_placements}")
+    #print(f"full_placements = {full_placements}")
     # Keep track of which placements we have tried for each submatrix index
     # int -> list(of ints), -1 means that we do not put anything in this submatrix
     index_to_tried_placements_map = {i : set() for i in range((P.shape[0]-1)*(P.shape[1]-1))}
@@ -193,7 +191,7 @@ def get_previous_states(input):
     index_to_current_placement_map = {i : (-1,) for i in range((P.shape[0]-1)*(P.shape[1]-1))}
     # Find the sharing submatrices for each submatrix
     index_to_sharing_submatrices = {j : find_sharing_submatrices(P, j) for j in range((P.shape[0]-1)*(P.shape[1]-1))}
-    print(f"index_to_sharing_submatrices = {index_to_sharing_submatrices}")
+    #print(f"index_to_sharing_submatrices = {index_to_sharing_submatrices}")
     index_to_sharing_submatrices_real_indices = {j : find_sharing_submatrices(P, j, get_real_indices=True) for j in range((P.shape[0]-1)*(P.shape[1]-1))}
     # Go through each 2x2 submatrix
     submat_index = 0
@@ -430,17 +428,17 @@ def get_previous_states(input):
 
 if __name__ == '__main__':
     #curr_state = [[0,1,0,1],[0,0,1,0],[0,0,0,1],[1,0,0,0]]
-    curr_state = [[True, False, True], [False, True, False], [True, False, True]]
+    curr_state = [[True, False, False], [False, True, False], [True, False, True]]
     #curr_state = [[0,1,0],[1,1,1],[1,1,0]]
     #curr_state = [[1,1,1],[1,1,1],[1,1,1]]
-    #curr_state = np.diag(np.ones(5, dtype=np.int32))
+    #curr_state = np.diag(np.ones(4, dtype=np.int32))
     #curr_state = [[True, True, False, True, False, True, False, True, True, False], [True, True, False, False, False, False, True, True, True, False], [True, True, False, False, False, False, False, False, False, True], [False, True, False, False, False, False, True, True, False, False]]
     #curr_state = [[True, False, True, False, False, True, True, True], [True, False, True, False, False, False, True, False], [True, True, True, False, False, False, True, False], [True, False, True, False, False, False, True, False], [True, False, True, False, False, True, True, True]]
     curr_state = np.array(curr_state, dtype=np.int32)
     print(f"State at T = 0:\n{curr_state}\n")
     next_state = calc_next_state(curr_state)
     print(f"State at T = -1:\n{next_state}\n")
-    previous_states = get_previous_states(next_state)
+    previous_states = get_previous_states(curr_state)
     print(f"Number of found solutions: {len(previous_states)}\n")
     #exit()
     all_true = True
