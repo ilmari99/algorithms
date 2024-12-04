@@ -14,14 +14,14 @@ def read_and_convert_to_matrix(file_path):
 
 if __name__ == "__main__":
     # File path to the text file
-    file_path = 'aocd4-input.txt'  # Replace with your text file path
+    file_path = 'aocd4-input.txt'
     weights = [0.7390609, 1.9268732, -1.8851099, -4.169684]
 
     # Read and convert to matrix
     matrix = read_and_convert_to_matrix(file_path)
 
     # Define convolution kernels
-    kernel_1x4 = np.array([weights]).reshape(1, 4)  # 1x4 kernel
+    kernel_1x4 = np.array([weights]).reshape(1, 4)
     kernel_4x4 = np.diag(weights)
     kernel_4x4_flipped = np.fliplr(kernel_4x4)
     kernel_4x1 = np.array([weights]).reshape(4,1)
@@ -34,7 +34,7 @@ if __name__ == "__main__":
     # Count how many close to -17.7412584 and 0.7969594 values
     target_1 = -17.7412584
     target_2 = 0.7969594
-    tolerance = 0.001  # Adjust tolerance if necessary
+    tolerance = 0.001
 
     num_correct = (
         np.sum(np.isclose(convolved_matrix_1x4, target_1, atol=tolerance)) +

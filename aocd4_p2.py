@@ -14,12 +14,12 @@ def read_and_convert_to_matrix(file_path):
 
 if __name__ == "__main__":
     # File path to the text file
-    file_path = 'aocd4-input.txt'  # Replace with your text file path
+    file_path = 'aocd4-input.txt'
     weights = [ 0.35320646, 1.6758898, -2.6483374 ]
 
     # Read and convert to matrix
     matrix = read_and_convert_to_matrix(file_path)
-    matrix = np.where(matrix == 1, 0, matrix)  # Remove 'x' characters (set to 0)
+    matrix = np.where(matrix == 1, 0, matrix)
 
     # Define kernels for all "mas" patterns (forward and reverse)
     kernels = [
