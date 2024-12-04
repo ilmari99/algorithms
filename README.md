@@ -16,10 +16,10 @@ Namely, this contains The Google Foobar challenges (and visualization of 4.2 las
 ## Collatz conjecture visualizer
 Collatz conjecture is a famous conjecture in mathematics. It states that for any positive integer, if you repeatedly apply the following function, you will eventually reach n=1:
 ```
-n = n/2 if n is even else 3n+1
+n = n/2 if n%2==0 else 3n+1
 ```
 
-The Collatz script creates a tree (starting from 1) and creates a tree of every value reachable from 1, when reversing the function, so that for example, at depth 6, are all numbers that take 6 steps to reach from 1.
+The Collatz script creates a tree (starting from 1) of every value reachable from 1, when reversing the function, so that, for example, at depth 6 are all numbers that take 6 steps to reach 1 when the Collatz iteration is applied.
 
 ![Collatz conjecture visualizer](collatz-tree.png)
 

@@ -8,6 +8,7 @@ import random
 from time import sleep
 import tensorflow as tf
 import matplotlib.pyplot as plt
+from convert_tf_to_tflite import convert_to_tflite
 #MODEL = tf.keras.models.load_model('model.h5')
 
 class LiteModel:
@@ -77,11 +78,11 @@ def human_place(board,player):
     return board
 
 def get_prediction(pl,board):
-    inp = np.array([[pl] + list(board.flatten())],dtype=np.float32)
+    inp = np.array([[pl] + [pl] + list(board.flatten())],dtype=np.float32)
     pred = MODEL.predict(inp)
     return pred[0][0]
 
-def model_place(board,player):
+def model_place(board,player, p = 0):
     selection = possibilities(board)
     choice_evaluations = []
     for choice in selection:
@@ -91,10 +92,28 @@ def model_place(board,player):
         #print(board)
         #print("Prediction: {}".format(pred))
         board[choice] = 0
-    best_choice = max(choice_evaluations,key=lambda x:x[1])
-    #print("Prediction: {}".format(best_choice[1]))
-    #print("Prediction: {}".format(best_choice[1]))
-    board[best_choice[0]] = player
+    #print(f"Choices: {choice_evaluations}")
+    choice_evaluations = sorted(choice_evaluations, key=lambda x: x[1], reverse=True)
+    # Use weighted top-p sampling
+    evals_exp = np.exp([x[1] for x in choice_evaluations])
+    evals = evals_exp/np.sum(evals_exp)
+    #print(f"Weights: {evals}")
+    cumsum = np.cumsum(evals)
+    # Find the first index where the cumulative sum is greater than p
+    idx = np.argmax(cumsum >= p)
+    #print(f"Index: {idx}")
+    valid_choices = choice_evaluations[:idx+1]
+    # Re softmax the valid choices to get the choice probabilities
+    evals_exp = np.exp([x[1] for x in valid_choices])
+    evals = evals_exp/np.sum(evals_exp)
+    # Choose a random move from the top-p choices
+    #print("Valid choices: {}".format(valid_choices))
+    #print(f"Weights: {evals}")
+    indices = np.arange(len(valid_choices))
+    choice_idx = np.random.choice(indices, p=evals)
+    choice = valid_choices[choice_idx][0]
+    #print(f"Chose: {choice}")
+    board[choice] = player
     #print("Vector: {}".format([[player] + list(board.flatten())]))
     return board
 
@@ -196,9 +215,11 @@ def play_game(players = {"p1":random_place,"p2":random_place},rate = 0.25, gathe
             board = fun(*args)
             if verbose:
                 print(board)
-            pl_states[player].append([i] + list(board.flatten()))
+            for player in players:
+                pl_states[player].append([player_ids[player]] + [i] + list(board.flatten()))
             counter += 1
             winner = evaluate(board)
+            #print(f"Winner: {winner}")
             if winner != 0:
                 # Winner is either 1, -1 or 0.5
                 if verbose:
@@ -227,11 +248,12 @@ def play_game(players = {"p1":random_place,"p2":random_place},rate = 0.25, gathe
     return (winner)
  
 
-def gather_data(rate = 0.25):
+def gather_data():
     print("Gathering data...")
     wins = {"p1":0,"p2":0,"tie":0}
-    for i in range(50000):
-        winner = play_game(players = {"p1":model_place_and_random,"p2":model_place_and_random}, rate=rate, gather_data = True,shuffle=True,verbose=False)
+    select_fun = lambda *args: model_place(*args,p=1)
+    for i in range(5000):
+        winner = play_game(players = {"p1":select_fun,"p2":select_fun}, gather_data = True, shuffle=True, verbose=False)
         wins[winner] += 1
     print(wins)
         
@@ -254,37 +276,46 @@ def simulate_virtual_gpus():
     print(len(gpus), "Physical GPU,", len(logical_gpus), "Logical GPUs")
     return
 
+def count_num_samples_in_ds(ds):
+    """ Count how many y values of 0, 0.5, 1 there are in the dataset.
+    """
+    num_samples = {0 : 0, 0.5 : 0, 1 : 0}
+    for x, y in ds:
+        num_samples[y.numpy()] += 1
+    return num_samples
 
 def train_model():
     #simulate_virtual_gpus()
     print("Training model...")
-    dataset = get_dataset("states.txt",add_channel_dim=True)
+    dataset = get_dataset("states.txt",add_channel_dim=True).shuffle(10000)
+    num_diff_y_samples = count_num_samples_in_ds(dataset)
+    print(num_diff_y_samples)
     print(dataset.take(1).as_numpy_iterator().next())
     #print(dataset.take(1).as_numpy_iterator().next())
     #with tf.device("/GPU:0"):
-    model = tf.keras.models.Sequential([
-        #tf.keras.layers.Conv1D(16, 5, activation='relu',input_shape=(10,1),padding="same",data_format="channels_last"),
-        tf.keras.layers.Conv1D(32, 3, activation='relu',input_shape=(10,1),padding="same",data_format="channels_last"),
-        tf.keras.layers.Conv1D(16, 3, activation='relu',padding="same",data_format="channels_last"),
-        tf.keras.layers.Flatten(),
-        tf.keras.layers.Dense(20, activation='linear'),#,input_shape=(10,))
-        tf.keras.layers.LeakyReLU(alpha=0.1),
-        tf.keras.layers.Dropout(0.3),
-        tf.keras.layers.Dense(20, activation='linear'),#,input_shape=(10,)),
-        tf.keras.layers.LeakyReLU(alpha=0.1),
-        tf.keras.layers.Dropout(0.3),
-        tf.keras.layers.Dense(10, activation='linear'),#,input_shape=(10,)),
-        tf.keras.layers.LeakyReLU(alpha=0.1),
-        tf.keras.layers.Dense(1, activation='sigmoid')
-    ])
-    model.compile(optimizer='adam',
-                loss='mse',
-                metrics=['accuracy'])
-    validation_dataset = dataset.take(500).batch(32)
-    test_dataset = dataset.skip(500).take(500).batch(32)
-    dataset = dataset.skip(1000).shuffle(1000).batch(32)
+    if True and os.path.exists("model.h5"):
+        model = tf.keras.models.load_model("model.h5")
+    else:
+        model = tf.keras.models.Sequential([
+            tf.keras.layers.Conv1D(8, 3, activation='relu',input_shape=(11,1)),
+            tf.keras.layers.Conv1D(16, 3, activation='relu'),
+            tf.keras.layers.Conv1D(32, 3, activation='relu'),
+            tf.keras.layers.Flatten(),
+            tf.keras.layers.Dense(20, activation='relu', kernel_regularizer=tf.keras.regularizers.l2(0.01)),
+            #tf.keras.layers.Dense(20, activation='relu'),#,input_shape=(10,)),
+            tf.keras.layers.Dense(20, activation='relu', kernel_regularizer=tf.keras.regularizers.l2(0.01)),
+            tf.keras.layers.Dense(1, activation='sigmoid')
+        ])
+        model.compile(optimizer='adam',
+                    loss='mse',
+                    metrics=['accuracy'])
+    
+    print(model.summary())
+    validation_dataset = dataset.take(500).batch(128)
+    test_dataset = dataset.skip(500).take(500).batch(128)
+    dataset = dataset.skip(1000).batch(128)
     early_stop = tf.keras.callbacks.EarlyStopping(monitor='val_loss', min_delta = 0.0001, patience=6, restore_best_weights=True)
-    model.fit(dataset, epochs=25,validation_data=validation_dataset, callbacks=[early_stop],verbose=1)
+    model.fit(dataset, epochs=30,validation_data=validation_dataset, callbacks=[early_stop],verbose=1)
     model.evaluate(test_dataset, verbose=0)
     model.save("model.h5")
     # clear
@@ -293,8 +324,9 @@ def train_model():
 def play_games():
     print("Playing games...")
     wins = {"p1":0,"p2":0,"tie":0}
+    select_fun = lambda *args: model_place(*args,p=0)
     for i in range(1000):
-        winner = play_game(players={"p1":model_place,"p2":random_place},shuffle=True,verbose=False)
+        winner = play_game(players={"p1":select_fun,"p2":random_place},shuffle=True,verbose=False)
         wins[winner] += 1
     print(wins)
     print("Player 1 won {} times".format(wins["p1"]))
@@ -313,16 +345,19 @@ if __name__ == "__main__":
     #play_as_human()
     #exit()
     p1_win_percentage = []
-    rate = 0.2
     for i in range(5):
         path = "random" if i == 0 else "model.tflite"
         MODEL = LiteModel(path, expand_dims=True)
         win_perc = play_games()
         p1_win_percentage.append(win_perc)
-        os.remove("states.txt")
-        gather_data(rate = rate)
+        if os.path.exists("states.txt"):
+            pass
+            os.remove("states.txt")
+        gather_data()
+        if os.path.exists("model.tflite"):
+            os.remove("model.tflite")
         train_model()
-        os.system("py ./convert_tf_to_tflite.py")
+        convert_to_tflite(file_path="model.h5", output_file="model.tflite")
         print(p1_win_percentage)
     fig,ax = plt.subplots()
     ax.plot(p1_win_percentage, label="Win percentage against random play")
