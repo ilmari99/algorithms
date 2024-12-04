@@ -39,7 +39,7 @@ def prev_step(n):
     if n<0:
         pos = False
     # Check if the lower_val is compatible
-    if ((n - 1) % 3 == 0) and (lower_val % 2 != 0): #If the lower_val is divisible by 2, then it can't be the previous step
+    if (lower_val % 2 != 0) and ((n - 1) % 3 == 0): #If the lower_val is divisible by 2, then it can't be the previous step
         vals[1] = int(lower_val)
     # The previous number can not fall below 1 for positive numbers or above -1 for negative
     if (pos and vals[1] <= 1) or (not pos and vals[1]>=-1):
@@ -63,6 +63,7 @@ def create_tree(start=1,max_level=10):
     vals = [None,None]
     nodes = [head]
     level_width = -1
+    total_nodes = 0
     while nodes:
         node = nodes.pop(0)
         val = node.number
@@ -77,9 +78,11 @@ def create_tree(start=1,max_level=10):
         if level != node.iters:             # Create a new level
             print(f"Level {level} with {level_width} elements.")
             level = node.iters
+            total_nodes += level_width
             level_width = 0
         if level < max_level:               # Add children to the nodes if we still want to count their children 
             nodes = nodes + children
+    print("Total number of nodes:",total_nodes)
     return head
 
 
@@ -183,13 +186,15 @@ def plot_as_tree(head,show=True):
     nodes = flatten(head)
     for n in nodes:
         if n.parent:
-            ax.plot([n.parent.iters,n.iters],[n.parent.number,n.number])
+            x = [n.parent.iters,n.iters]
+            y = [n.parent.number,n.number]
+            ax.plot(x,y)
     ax.set_xlabel("Number of iterations to reach 1")
     ax.set_ylabel("Number (log scale)")
     ax.grid(True)
-    # Logarithmic scale
-    ax.set_yscale('log')
-    ax.set_title("Collatz tree in log10")
+    # Log2 scale for y axis
+    ax.set_yscale("log",base=2)
+    ax.set_title("Collatz tree in log2 scale")
     if show:
         plt.show()
     return
@@ -224,11 +229,43 @@ def plot_numbers_reached(head,start=0,end=-1,show=True):
     if show:
         plt.show()
     return
+
+
+def plot_function():
+    """
+    Plot the function, so that we plot the function of the value, wrt. m + n
+    Only consider positive integer values of m and n, and only if the function is an integer too
+    """
+    func = lambda m,n :(2**n - 1)/(3**m) + 1
+    m = range(0,100)
+    n = range(0,100)
+    x = []
+    y = []
+    for i in m:
+        for j in n:
+            value = func(i,j)
+            if value.is_integer() and value > 1:
+                x.append(i + j)
+                y.append(func(i,j))
+    plt.figure()
+    plt.title("Function of the value, wrt. m + n")
+    plt.scatter(x,y)
+    plt.xlabel("m + n")
+    plt.ylabel("Value")
+    plt.yscale("log",base=2)
+    plt.show()
+    return
     
 
+
+
 if __name__ == "__main__":
+    #plot_function()
+
+
+    #exit()
     # Create the collatz tree with a root of 1 up to 30 reverse collatz steps
-    head = create_tree(start=1,max_level=45)
+    head = create_tree(start=1,max_level=40)
     # Display the smallest number in each level
     print_tree(head,format_mode="smallest")
 
